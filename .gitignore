@@ -6,6 +6,12 @@ dist/
 wheels/
 *.egg-info
 
+# macOS files
+.DS_Store
+
+#visual Studio Code settings
+.vscode/
+
 # Virtual environments
 .venv
 

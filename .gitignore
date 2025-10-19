@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# too bigh data files
+Data/

@@ -1,0 +1,87 @@
+# dataset structure:
+
+{
+    "player_won": <bool>,  # whether the player won the battle
+
+    "p1_team_details": [  # list of Pokémon on the player's team
+        {
+            "name": <str>,
+            "level": <int>,
+            "types": [<str>, <str>],  # up to 2 types
+            "base_hp": <int>,
+            "base_atk": <int>,
+            "base_def": <int>,
+            "base_spa": <int>,
+            "base_spd": <int>,
+            "base_spe": <int>
+        },
+        ...
+    ],
+
+    "p2_lead_details": {  # the opposing lead Pokémon
+        "name": <str>,
+        "level": <int>,
+        "types": [<str>, <str>],
+        "base_hp": <int>,
+        "base_atk": <int>,
+        "base_def": <int>,
+        "base_spa": <int>,
+        "base_spd": <int>,
+        "base_spe": <int>
+    },
+
+    "battle_timeline": [  # chronological sequence of battle turns
+        {
+            "turn": <int>,  # turn number
+
+            "p1_pokemon_state": {
+                "name": <str>,
+                "hp_pct": <float>,  # current HP as a fraction (0.0–1.0)
+                "status": <str>,    # e.g. "par", "sleep", "burn", "nostatus"
+                "effects": [<str>], # list of volatile effects or "noeffect"
+                "boosts": {         # stat boosts (+/- stages)
+                    "atk": <int>,
+                    "def": <int>,
+                    "spa": <int>,
+                    "spd": <int>,
+                    "spe": <int>
+                }
+            },
+
+            "p1_move_details": {   # move used by player (or null if none)
+                "name": <str>,
+                "type": <str>,      # e.g. "ELECTRIC", "PSYCHIC"
+                "category": <str>,  # "PHYSICAL", "SPECIAL", or "STATUS"
+                "base_power": <int>,
+                "accuracy": <float>,# 0.0–1.0
+                "priority": <int>
+            },
+
+            "p2_pokemon_state": {  # opponent's Pokémon current state
+                "name": <str>,
+                "hp_pct": <float>,
+                "status": <str>,
+                "effects": [<str>],
+                "boosts": {
+                    "atk": <int>,
+                    "def": <int>,
+                    "spa": <int>,
+                    "spd": <int>,
+                    "spe": <int>
+                }
+            },
+
+            "p2_move_details": {   # opponent move used (or null if skipped)
+                "name": <str>,
+                "type": <str>,
+                "category": <str>,
+                "base_power": <int>,
+                "accuracy": <float>,
+                "priority": <int>
+            }
+        },
+        ...
+    ]
+
+    "battle_id" : <int>
+}

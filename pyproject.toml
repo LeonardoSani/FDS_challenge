@@ -1,0 +1,12 @@
+[project]
+name = "fds-challenge-1"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "ipykernel>=7.0.1",
+    "kaggle>=1.7.4.5",
+    "numpy>=2.3.4",
+    "pandas>=2.3.3",
+]

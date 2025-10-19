@@ -6,8 +6,9 @@ dist/
 wheels/
 *.egg-info
 
-# macOS files
-.DS_Store
+# Ignore Mac OS-generated files in all directories
+**/.DS_Store
+**/._.DS_Store
 
 #visual Studio Code settings
 .vscode/

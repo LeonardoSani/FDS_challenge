@@ -138,10 +138,20 @@ def get_dict_def_types(data: list[dict]) -> dict:
     pokemons = pokedex(data)[['name','type1','type2']].drop_duplicates().sort_values('name').reset_index(drop=True)
 
     # Create the dictionary
-    pokemon_def_types = pokemons.set_index('name').apply(lambda row: {t for t in row if t != 'notype'}, axis=1).to_dict()
+    pokemon_def_types = pokemons.set_index('name').apply(lambda row: {t.lower() for t in row if t != 'notype'}, axis=1).to_dict()
 
     return pokemon_def_types
 
+def get_dict_attacker_types(data: list[dict]) -> dict:
+    """Create a dictionary with pokemon name as key and a list of its types as value"""
+    # Use pokedex to get the types of the attacking Pokémon (which are on the field)
+    pokemons = pokedex(data)[['name','type1','type2']].drop_duplicates().sort_values('name').reset_index(drop=True)
+    
+    # Create the dictionary: name -> [type1, type2]
+    # We use a list instead of a set/tuple here because we need to check both types for STAB.
+    pokemon_att_types = pokemons.set_index('name').apply(lambda row: [t.lower() for t in row if t and t.lower() != 'notype'], axis=1).to_dict()
+
+    return pokemon_att_types
 
 
 def avg_effectiveness_1(data: list[dict], difference=False) -> pd.DataFrame:
@@ -457,4 +467,81 @@ def category_impact_score(data: list[dict], difference=False):
                 'p2_cat_impact_score': cat_impact_p2,
                 "player_won" : battle["player_won"]
             })
+    return pd.DataFrame(final)
+
+
+def avg_stab_multiplier(data: list[dict], difference: bool = False) -> pd.DataFrame:
+    """
+    Calculates the average STAB multiplier (1.5 for STAB, 1.0 for non-STAB/Status) 
+    for all moves used by P1 and P2 throughout the battle.
+    
+    :param data: List of battle dictionaries.
+    :param difference: If True, returns the difference (P1 - P2) in average STAB multipliers.
+    :return: A pandas DataFrame with the calculated average STAB multiplier data.
+    """
+    # Helper dictionary to quickly get the attacking Pokémon's type(s)
+    pokemon_att_types = get_dict_attacker_types(data)
+    
+    final = []
+    
+    for battle in data:
+        total_turns = 0
+        total_stab_p1 = 0.0
+        total_stab_p2 = 0.0
+        
+        for turn in battle['battle_timeline']:
+            p1_pokemon_state = turn.get('p1_pokemon_state', {})
+            p2_pokemon_state = turn.get('p2_pokemon_state', {})
+
+            name1 = p1_pokemon_state.get('name')
+            name2 = p2_pokemon_state.get('name')
+
+            # Get the types of the Pokémon currently active
+            att_types_p1 = pokemon_att_types.get(name1, [])
+            att_types_p2 = pokemon_att_types.get(name2, [])
+
+            p1_move_details = turn.get('p1_move_details', {})
+            p2_move_details = turn.get('p2_move_details', {})
+            
+            # --- P1 STAB Calculation ---
+            if p1_move_details:
+                move_type_1 = p1_move_details.get('type', '').lower()
+                
+                # Check if the move's type matches any of the attacker's types (STAB)
+                if move_type_1 in att_types_p1:
+                    total_stab_p1 += 1.5
+                else:
+                    total_stab_p1 += 1.0 # Non-STAB moves (including Status moves) get 1.0
+            
+            # --- P2 STAB Calculation ---
+            if p2_move_details:
+                move_type_2 = p2_move_details.get('type', '').lower()
+                
+                # Check if the move's type matches any of the attacker's types (STAB)
+                if move_type_2 in att_types_p2:
+                    total_stab_p2 += 1.5
+                else:
+                    total_stab_p2 += 1.0 # Non-STAB moves (including Status moves) get 1.0
+
+            total_turns += 1
+            
+        # Handle division by zero
+        
+        avg_stab_p1 = total_stab_p1 / total_turns
+        avg_stab_p2 = total_stab_p2 / total_turns
+            
+        if difference:
+            final.append({
+                'battle_id': battle['battle_id'],
+                'avg_stab_diff': avg_stab_p1 - avg_stab_p2,
+                "player_won" : battle["player_won"]
+            })
+        else: 
+            final.append({
+                'battle_id': battle['battle_id'],
+                'avg_stab_p1': avg_stab_p1,
+                'avg_stab_p2': avg_stab_p2,
+                "player_won" : battle["player_won"]
+            })
+            
     return pd.DataFrame(final)

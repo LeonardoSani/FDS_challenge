@@ -282,6 +282,8 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
     :param divide_turns: If True, computes separate averages for the first 10, middle 10, and last 10 turns.
     :return: A pandas DataFrame with the calculated average effectiveness data.
     """
+    pokemon_def_types= get_dict_def_types(data)
+
     final = []
     
     # Define turn segmentation boundaries

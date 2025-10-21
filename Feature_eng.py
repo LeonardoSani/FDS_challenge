@@ -571,8 +571,9 @@ def avg_final_HP_pct(data: list[dict]) -> pd.DataFrame:
             p2_dict[name2] = Hp_2
 
         # calculate the average even if a pokemon is fainted (0% hp) or not present (100% hp)
-        avg_hp_pct_p1 = np.sum(list(p1_dict.values())) / 6  # assuming a team of 6 pokemons
-        avg_hp_pct_p2 = np.sum(list(p2_dict.values())) / 6  
+         # assuming a team of 6 pokemons
+        avg_hp_pct_p1 = np.sum(list(p1_dict.values())) + (6 - len(p1_dict)) / 6
+        avg_hp_pct_p2 = np.sum(list(p2_dict.values())) + (6 - len(p2_dict)) / 6 
 
         final.append({
             'battle_id': battle['battle_id'],

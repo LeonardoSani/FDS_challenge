@@ -547,3 +547,37 @@ def avg_stab_multiplier(data: list[dict], difference: bool = False) -> pd.DataFr
             })
             
     return pd.DataFrame(final)
+
+
+def avg_final_HP_pct(data: list[dict]) -> pd.DataFrame:
+    '''Calculate the average HP percentage of P1 and P2's Pokémon at the end of the 30 turns.'''
+
+    final = []
+    for battle in data:
+        p1_dict={} # collect life percentages of each pokemon in p1 team
+        p2_dict={} # collect life percentages of each pokemon in p2 team
+
+        for turn in battle['battle_timeline']:
+            p1_pokemon_state = turn.get('p1_pokemon_state', {})
+            p2_pokemon_state = turn.get('p2_pokemon_state', {})
+
+            name1 = p1_pokemon_state.get('name')
+            name2 = p2_pokemon_state.get('name')
+
+            Hp_1 = p1_pokemon_state.get('hp_pct')
+            Hp_2 = p2_pokemon_state.get('hp_pct')
+
+            p1_dict[name1] = Hp_1
+            p2_dict[name2] = Hp_2
+
+        avg_hp_pct_p1 = np.mean(list(p1_dict.values()))
+        avg_hp_pct_p2 = np.mean(list(p2_dict.values()))
+
+        final.append({
+            'battle_id': battle['battle_id'],
+            'avg_final_hp_pct_p1': avg_hp_pct_p1,
+            'avg_final_hp_pct_p2': avg_hp_pct_p2,
+            "player_won" : battle["player_won"]
+        })
+    
+    return pd.DataFrame(final)

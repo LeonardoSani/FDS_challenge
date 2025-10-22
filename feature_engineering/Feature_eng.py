@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 
-def get_dict_from_json(file_path):
+def get_dict_from_json(file_path): #
     l=[]
     with open(file_path, 'r') as f:
         for line in f: #ok
@@ -13,7 +13,7 @@ def get_dict_from_json(file_path):
     return l
 
 
-def pokedex(data: list[dict]) -> pd.DataFrame:
+def pokedex(data: list[dict]) -> pd.DataFrame: #
     """Create a simple DataFrame with basic features for each observed pokemon in p1 team and p2_lead in the input data"""
 
     pokedex = []
@@ -53,7 +53,7 @@ def pokedex(data: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(pokedex)
 
 
-def opponents_pokemon(data: list[dict]) -> pd.DataFrame:
+def opponents_pokemon(data: list[dict]) -> pd.DataFrame: #
     """Create a simple DataFrame with basic features for each observed opponent's pokemon """
     pokedex = []
     for battle in data:
@@ -69,7 +69,7 @@ def opponents_pokemon(data: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(pokedex)
 
 
-def get_all_def_types(data: list[dict]) -> pd.DataFrame:
+def get_all_def_types(data: list[dict]) -> pd.DataFrame: #
     """Create a DataFrame with all unique pokemon defense types observed in the dataset"""
 
     t1 = pokedex(data)['type1'].drop_duplicates().reset_index(drop=True)
@@ -79,7 +79,7 @@ def get_all_def_types(data: list[dict]) -> pd.DataFrame:
     return all_types
 
 
-# Define the 19 types 
+# Define the types 
 types = [
     "bug", "dark", "dragon", "electric", "fairy", "fighting", "fire",
     "flying", "ghost", "grass", "ground", "ice", "normal", "poison",
@@ -119,7 +119,7 @@ type_chart = np.array([
 ])
 
 
-def effectiveness(attacking_type: str, defending_types: list[str]) -> float:
+def effectiveness(attacking_type: str, defending_types: list[str]) -> float: #
     '''Calculate the effectiveness of an attack type against one or two defending types.'''
 
     idx_att = type_to_index[attacking_type.lower()]
@@ -132,7 +132,7 @@ def effectiveness(attacking_type: str, defending_types: list[str]) -> float:
     return mult
 
 
-def get_dict_def_types(data: list[dict]) -> dict:
+def get_dict_def_types(data: list[dict]) -> dict: # 
     """Create a dictionary with pokemon name as key and a set of its types as value"""
     pokemon_def_types = dict()
     pokemons = pokedex(data)[['name','type1','type2']].drop_duplicates().sort_values('name').reset_index(drop=True)
@@ -142,7 +142,7 @@ def get_dict_def_types(data: list[dict]) -> dict:
 
     return pokemon_def_types
 
-def get_dict_attacker_types(data: list[dict]) -> dict:
+def get_dict_attacker_types(data: list[dict]) -> dict: #
     """Create a dictionary with pokemon name as key and a list of its types as value"""
     # Use pokedex to get the types of the attacking Pokémon (which are on the field)
     pokemons = pokedex(data)[['name','type1','type2']].drop_duplicates().sort_values('name').reset_index(drop=True)
@@ -154,7 +154,7 @@ def get_dict_attacker_types(data: list[dict]) -> dict:
     return pokemon_att_types
 
 
-def avg_effectiveness_1(data: list[dict], difference=False) -> pd.DataFrame:
+def avg_effectiveness_1(data: list[dict], difference=False) -> pd.DataFrame:#
     """ Given the database 
         calculate the average effective multiplier of all moves used by P1 and P2 throughout the turns.
     """
@@ -204,7 +204,7 @@ def avg_effectiveness_1(data: list[dict], difference=False) -> pd.DataFrame:
             })
     return pd.DataFrame(final)
 
-def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_moves=True) -> pd.DataFrame:
+def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_moves=True) -> pd.DataFrame:#
     """ Given the database
         calculate the average effective multiplier of all moves used by P1 and P2 throughout the turns.
         This version includes an option to include or exclude Status moves from the calculation, given the fact that they do not deal damage.
@@ -273,7 +273,7 @@ def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_mov
     return pd.DataFrame(final)
 
 # Extended version of avg_effectiveness with turn segmentation
-def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns: bool = False) -> pd.DataFrame:
+def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns: bool = False) -> pd.DataFrame: #
     """ Given the database, dict with pokemon name:list of types 
     calculate the average effectiveness of all moves used by P1 and P2 in each battle.
     
@@ -401,7 +401,7 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
     return pd.DataFrame(final)
 
 
-def get_dict_base_stats(data: list[dict]) -> dict:
+def get_dict_base_stats(data: list[dict]) -> dict: #
     """Create a dictionary with pokemon name as key and a list of its stats as value: base_atk	base_def base_spa base_spd"""
 
     pokemon_def_types = dict()
@@ -583,3 +583,5 @@ def avg_final_HP_pct(data: list[dict]) -> pd.DataFrame:
         })
     
     return pd.DataFrame(final)
+
+    

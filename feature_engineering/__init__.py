@@ -6,7 +6,10 @@ from .extractors import (
     avg_effectiveness2,
     category_impact_score,
     avg_stab_multiplier,
-    avg_final_HP_pct
+    avg_final_HP_pct,
+    avg_boost_diff_per_turn,
+    avg_stat_diff_per_turn,
+    accuracy_basepower_avg
 )
 
 from .utils import (
@@ -17,7 +20,8 @@ from .utils import (
     effectiveness,      
     get_dict_def_types, 
     get_dict_attacker_types, 
-    get_dict_base_stats
+    get_dict_base_stats,
+    get_dict_base_stats1
 )
 
 __all__ = [
@@ -37,4 +41,8 @@ __all__ = [
     'get_dict_def_types',
     'get_dict_attacker_types',
     'get_dict_base_stats'
+    'get_dict_base_stats1',
+    'accuracy_basepower_avg',
+    'avg_boost_diff_per_turn',
+    'avg_stat_diff_per_turn'
 ]

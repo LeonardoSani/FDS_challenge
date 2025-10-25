@@ -42,7 +42,7 @@ def avg_effectiveness_1(data: list[dict], difference=False) -> pd.DataFrame:
         if difference:
             final.append({
                 'battle_id': battle['battle_id'],
-                'avg_diff': avg_eff_p1-avg_eff_p2,
+                'avg_effectiveness_diff': avg_eff_p1-avg_eff_p2,
                 "player_won" : battle["player_won"]
             })
         else: 
@@ -111,7 +111,7 @@ def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_mov
         if difference:
             final.append({
                 'battle_id': battle['battle_id'],
-                'avg_diff': avg_eff_p1-avg_eff_p2,
+                'avg_effectiveness_diff': avg_eff_p1-avg_eff_p2,
                 "player_won" : battle["player_won"]
             })
         else: 

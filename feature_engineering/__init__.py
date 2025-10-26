@@ -23,6 +23,7 @@ from .utils import (
     get_dict_base_stats,
     get_dict_base_stats1
 )
+from .Aggregator import generate_features
 
 __all__ = [
     # Extractor Functions
@@ -32,6 +33,9 @@ __all__ = [
     'category_impact_score',
     'avg_stab_multiplier',
     'avg_final_HP_pct',
+    'avg_boost_diff_per_turn',
+    'avg_stat_diff_per_turn',
+    'accuracy_basepower_avg',
     # Utility Functions
     'get_dict_from_json',
     'pokedex',
@@ -40,9 +44,8 @@ __all__ = [
     'effectiveness',
     'get_dict_def_types',
     'get_dict_attacker_types',
-    'get_dict_base_stats'
+    'get_dict_base_stats',
     'get_dict_base_stats1',
-    'accuracy_basepower_avg',
-    'avg_boost_diff_per_turn',
-    'avg_stat_diff_per_turn'
+    # Aggregator Function
+    'generate_features'
 ]

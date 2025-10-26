@@ -2,9 +2,9 @@
 
 import numpy as np
 import pandas as pd
-from .utils import get_dict_def_types, get_dict_attacker_types, get_dict_base_stats, effectiveness
+from .utils import get_dict_def_types, get_dict_attacker_types, get_dict_base_stats, effectiveness, get_dict_base_stats1
 
-def avg_effectiveness_1(data: list[dict], difference=False) -> pd.DataFrame:
+def avg_effectiveness_1(data: list[dict], difference=False, test=False) -> pd.DataFrame:
     """ Given the database 
         calculate the average effective multiplier of all moves used by P1 and P2 throughout the turns.
     """
@@ -39,23 +39,23 @@ def avg_effectiveness_1(data: list[dict], difference=False) -> pd.DataFrame:
         
         avg_eff_p1 = total_effectiveness_p1 / total_turns 
         avg_eff_p2 = total_effectiveness_p2 / total_turns
+
+        result = {'battle_id': battle['battle_id']}
+        
         if difference:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_effectiveness_diff': avg_eff_p1-avg_eff_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_effectiveness_diff'] = avg_eff_p1 - avg_eff_p2
         else: 
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_effectiveness_p1': avg_eff_p1,
-                'avg_effectiveness_p2': avg_eff_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_effectiveness_p1'] = avg_eff_p1
+            result['avg_effectiveness_p2'] = avg_eff_p2
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
     return pd.DataFrame(final)
 
 
-def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_moves=True) -> pd.DataFrame:
+def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_moves=True, test=False) -> pd.DataFrame:
     """ Given the database
         calculate the average effective multiplier of all moves used by P1 and P2 throughout the turns.
         This version includes an option to include or exclude Status moves from the calculation, given the fact that they do not deal damage.
@@ -107,24 +107,23 @@ def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_mov
         
         avg_eff_p1 = total_effectiveness_p1 / total_turns 
         avg_eff_p2 = total_effectiveness_p2 / total_turns
+
+        result = {'battle_id': battle['battle_id']}
             
         if difference:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_effectiveness_diff': avg_eff_p1-avg_eff_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_effectiveness_diff'] = avg_eff_p1 - avg_eff_p2
         else: 
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_effectiveness_p1': avg_eff_p1,
-                'avg_effectiveness_p2': avg_eff_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_effectiveness_p1'] = avg_eff_p1
+            result['avg_effectiveness_p2'] = avg_eff_p2
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
     return pd.DataFrame(final)
 
 # Extended version of avg_effectiveness with turn segmentation
-def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns: bool = False) -> pd.DataFrame:
+def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns: bool = False, test: bool = False) -> pd.DataFrame:
     """ Given the database, dict with pokemon name:list of types 
     calculate the average effectiveness of all moves used by P1 and P2 in each battle.
     
@@ -181,18 +180,21 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
                 avg_eff_p1 = total_effectiveness_p1 / total_turns 
                 avg_eff_p2 = total_effectiveness_p2 / total_turns
             
-            battle_result = {'battle_id': battle['battle_id'], "player_won": battle["player_won"]}
+            battle_result = {'battle_id': battle['battle_id']}
             if difference:
                 battle_result['avg_diff'] = avg_eff_p1 - avg_eff_p2
             else: 
                 battle_result['avg_effectiveness_p1'] = avg_eff_p1
                 battle_result['avg_effectiveness_p2'] = avg_eff_p2
             
+            if not test:
+                battle_result['player_won'] = battle['player_won']
+            
             final.append(battle_result)
 
         # --- Logic for Divided Turns (`divide_turns=True`) ---
         else:
-            battle_data = {'battle_id': battle['battle_id'], "player_won": battle["player_won"]}
+            battle_data = {'battle_id': battle['battle_id']}
             
             for segment_name, (start, end) in TURN_SEGMENTS.items():
                 # Determine the slice of the timeline for the current segment
@@ -247,12 +249,15 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
                     battle_data[f'avg_effectiveness_p1_{segment_name}'] = avg_eff_p1
                     battle_data[f'avg_effectiveness_p2_{segment_name}'] = avg_eff_p2
             
+            if not test:
+                battle_data['player_won'] = battle['player_won']
+            
             final.append(battle_data)
 
     return pd.DataFrame(final)
 
 
-def category_impact_score(data: list[dict], difference=False):
+def category_impact_score(data: list[dict], difference=False, test=False):
 
     dict_base_stats = get_dict_base_stats(data)
     final = []
@@ -295,23 +300,22 @@ def category_impact_score(data: list[dict], difference=False):
         cat_impact_p1 = p1_score / total_turns 
         cat_impact_p2 = p2_score / total_turns
 
+        result = {'battle_id': battle['battle_id']}
+
         if difference:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'cat_impact_diff': cat_impact_p1 - cat_impact_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['cat_impact_diff'] = cat_impact_p1 - cat_impact_p2
         else: 
-            final.append({
-                'battle_id': battle['battle_id'],
-                'p1_cat_impact_score': cat_impact_p1,
-                'p2_cat_impact_score': cat_impact_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['p1_cat_impact_score'] = cat_impact_p1
+            result['p2_cat_impact_score'] = cat_impact_p2
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
     return pd.DataFrame(final)
 
 
-def avg_stab_multiplier(data: list[dict], difference: bool = False) -> pd.DataFrame:
+def avg_stab_multiplier(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
     """
     Calculates the average STAB multiplier (1.5 for STAB, 1.0 for non-STAB/Status) 
     for all moves used by P1 and P2 throughout the battle.
@@ -370,25 +374,24 @@ def avg_stab_multiplier(data: list[dict], difference: bool = False) -> pd.DataFr
         
         avg_stab_p1 = total_stab_p1 / total_turns
         avg_stab_p2 = total_stab_p2 / total_turns
+
+        result = {'battle_id': battle['battle_id']}
             
         if difference:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_stab_diff': avg_stab_p1 - avg_stab_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_stab_diff'] = avg_stab_p1 - avg_stab_p2
         else: 
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_stab_p1': avg_stab_p1,
-                'avg_stab_p2': avg_stab_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_stab_p1'] = avg_stab_p1
+            result['avg_stab_p2'] = avg_stab_p2
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
             
     return pd.DataFrame(final)
 
 
-def avg_final_HP_pct(data: list[dict], difference: bool = False) -> pd.DataFrame:
+def avg_final_HP_pct(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
     '''Calculate the average HP percentage of P1 and P2's Pokémon at the end of the 30 turns.'''
 
     final = []
@@ -414,23 +417,22 @@ def avg_final_HP_pct(data: list[dict], difference: bool = False) -> pd.DataFrame
         avg_hp_pct_p1 = (np.sum(list(p1_dict.values())) + (6 - len(p1_dict)) ) / 6
         avg_hp_pct_p2 = (np.sum(list(p2_dict.values())) + (6 - len(p2_dict)) ) / 6 
 
+        result = {'battle_id': battle['battle_id']}
+
         if difference:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_final_hp_pct_diff': avg_hp_pct_p1 - avg_hp_pct_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_final_hp_pct_diff'] = avg_hp_pct_p1 - avg_hp_pct_p2
         else:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_final_hp_pct_p1': avg_hp_pct_p1,
-                'avg_final_hp_pct_p2': avg_hp_pct_p2,
-                "player_won" : battle["player_won"]
-            })
+            result['avg_final_hp_pct_p1'] = avg_hp_pct_p1
+            result['avg_final_hp_pct_p2'] = avg_hp_pct_p2
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
     
     return pd.DataFrame(final)
 
-def avg_stat_diff_per_turn(data: list[dict], stats: list[str]) -> pd.DataFrame:
+def avg_stat_diff_per_turn(data: list[dict], stats: list[str], test: bool = False) -> pd.DataFrame:
     '''
     Calculate the average base stat difference (P1 - P2) per turn for multiple stats.
     
@@ -442,7 +444,7 @@ def avg_stat_diff_per_turn(data: list[dict], stats: list[str]) -> pd.DataFrame:
         DataFrame with battle_id, average stat differences per turn for each stat, and player_won
     '''
     # Get base stats dictionary for all pokemon
-    pokemon_stats = get_dict_base_stats(data)
+    pokemon_stats = get_dict_base_stats1(data)
     
     final = []
     for battle in data:
@@ -484,13 +486,15 @@ def avg_stat_diff_per_turn(data: list[dict], stats: list[str]) -> pd.DataFrame:
         
         # Calculate average stat differences per turn
         battle_result = {
-            'battle_id': battle['battle_id'],
-            "player_won": battle["player_won"]
+            'battle_id': battle['battle_id']
         }
         
         for stat in stats:
             avg_stat_diff = total_stat_diffs[stat] / total_turns
             battle_result[f'avg_{stat}_diff_per_turn'] = avg_stat_diff
+        
+        if not test:
+            battle_result['player_won'] = battle['player_won']
         
         final.append(battle_result)
     
@@ -499,7 +503,7 @@ def avg_stat_diff_per_turn(data: list[dict], stats: list[str]) -> pd.DataFrame:
 
 
 
-def avg_boost_diff_per_turn(data: list[dict], difference: bool = False) -> pd.DataFrame:
+def avg_boost_diff_per_turn(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
     '''
     Calculate the average boost values for P1 and P2's Pokémon per turn.
     Boosts are temporary stat modifications that occur during battle.
@@ -541,14 +545,18 @@ def avg_boost_diff_per_turn(data: list[dict], difference: bool = False) -> pd.Da
         
         # Calculate average boosts per turn
         battle_result = {
-            'battle_id': battle['battle_id'],
+            'battle_id': battle['battle_id']
         }
         
-            # Calculate differences for each boost type
+        # Calculate differences for each boost type
         for boost_type in boost_types:
             avg_boost_p1 = total_boosts_p1[boost_type] / total_turns if total_turns > 0 else 0.0
             avg_boost_p2 = total_boosts_p2[boost_type] / total_turns if total_turns > 0 else 0.0
             battle_result[f'avg_{boost_type}_boost_diff'] = avg_boost_p1 - avg_boost_p2
+        
+        if not test:
+            battle_result['player_won'] = battle['player_won']
+            
         final.append(battle_result)
     
     return pd.DataFrame(final)
@@ -556,17 +564,18 @@ def avg_boost_diff_per_turn(data: list[dict], difference: bool = False) -> pd.Da
 
 
 
-def accuracy_basepower_avg(data: list[dict], difference: bool = False) -> pd.DataFrame:
+def accuracy_basepower_avg(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
     '''
     Calculate the average accuracy and base power of moves used by P1 and P2 throughout the battle.
     For turns where move_details is null (no move was made), accuracy and base_power are treated as 0.
-    
+
     Args:
         data: List of battle dictionaries
         difference: If True, returns the difference (P1 - P2) in average accuracy and base power.
+        test: If True, excludes the "player_won" column from the output.
 
     Returns:
-        DataFrame with battle_id, average accuracy and base power for P1 and P2, and player_won
+        DataFrame with battle_id, average accuracy and base power for P1 and P2, and optionally player_won
     '''
     final = []
     for battle in data:
@@ -575,59 +584,56 @@ def accuracy_basepower_avg(data: list[dict], difference: bool = False) -> pd.Dat
         total_accuracy_p2 = 0.0
         total_basepower_p1 = 0.0
         total_basepower_p2 = 0.0
-        
+
         for turn in battle['battle_timeline']:
             p1_move_details = turn.get('p1_move_details', {})
             p2_move_details = turn.get('p2_move_details', {})
-            
+
             # --- P1 Calculation ---
-            # If move_details is None or empty dict, treat as 0 for both accuracy and base_power
             if p1_move_details:
                 accuracy_1 = p1_move_details.get('accuracy', 100)  # default accuracy is 100 if not specified
                 base_power_1 = p1_move_details.get('base_power', 0)  # default base power is 0 if not specified
                 total_accuracy_p1 += accuracy_1
                 total_basepower_p1 += base_power_1
             else:
-                # No move made, count as 0 for both
                 total_accuracy_p1 += 0
                 total_basepower_p1 += 0
-            
+
             # --- P2 Calculation ---
-            # If move_details is None or empty dict, treat as 0 for both accuracy and base_power
             if p2_move_details:
                 accuracy_2 = p2_move_details.get('accuracy', 100)
                 base_power_2 = p2_move_details.get('base_power', 0)
                 total_accuracy_p2 += accuracy_2
                 total_basepower_p2 += base_power_2
             else:
-                # No move made, count as 0 for both
                 total_accuracy_p2 += 0
                 total_basepower_p2 += 0
 
             total_turns += 1
-            
-        # Calculate averages (dividing by total_turns includes turns with no moves)
+
+        # Calculate averages
         avg_accuracy_p1 = total_accuracy_p1 / total_turns if total_turns > 0 else 0.0
         avg_accuracy_p2 = total_accuracy_p2 / total_turns if total_turns > 0 else 0.0
         avg_basepower_p1 = total_basepower_p1 / total_turns if total_turns > 0 else 0.0
         avg_basepower_p2 = total_basepower_p2 / total_turns if total_turns > 0 else 0.0
-        
+
+        result = {
+            'battle_id': battle['battle_id']
+        }
+
         if difference:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_accuracy_diff': avg_accuracy_p1 - avg_accuracy_p2,
-                'avg_basepower_diff': avg_basepower_p1 - avg_basepower_p2,
-                "player_won": battle["player_won"]
-            })
+            result['avg_accuracy_diff'] = avg_accuracy_p1 - avg_accuracy_p2
+            result['avg_basepower_diff'] = avg_basepower_p1 - avg_basepower_p2
         else:
-            final.append({
-                'battle_id': battle['battle_id'],
-                'avg_accuracy_p1': avg_accuracy_p1,
-                'avg_accuracy_p2': avg_accuracy_p2,
-                'avg_basepower_p1': avg_basepower_p1,
-                'avg_basepower_p2': avg_basepower_p2,
-                "player_won": battle["player_won"]
-            })
-    
+            result['avg_accuracy_p1'] = avg_accuracy_p1
+            result['avg_accuracy_p2'] = avg_accuracy_p2
+            result['avg_basepower_p1'] = avg_basepower_p1
+            result['avg_basepower_p2'] = avg_basepower_p2
+
+        if not test:
+            result['player_won'] = battle['player_won']
+
+        final.append(result)
+
     return pd.DataFrame(final)
 

@@ -122,10 +122,26 @@ def get_dict_attacker_types(data: list[dict]) -> dict:
 def get_dict_base_stats(data: list[dict]) -> dict: 
     """Create a dictionary with pokemon name as key and a list of its stats as value: base_atk	base_def base_spa base_spd"""
 
-    pokemon_def_types = dict()
+    pokemon_stats = dict()
     pokemons = pokedex(data)[['name','base_atk','base_def','base_spa','base_spd']].drop_duplicates().sort_values('name').reset_index(drop=True)
 
     # Create the dictionary
-    pokemon_def_types = pokemons.set_index('name').apply(lambda row: [t for t in row ], axis=1).to_dict()
+    pokemon_stats = pokemons.set_index('name').apply(lambda row: [t for t in row ], axis=1).to_dict()
 
-    return pokemon_def_types
+    return pokemon_stats
+
+def get_dict_base_stats1(data: list[dict]) -> dict: 
+    """Return a dict mapping pokemon name -> dict of base stats (base_hp, base_atk, base_def, base_spa, base_spd, base_spe)."""
+    pokemons = pokedex(data)[['name','base_hp','base_atk','base_def','base_spa','base_spd','base_spe']].drop_duplicates().sort_values('name').reset_index(drop=True)
+
+    # Create nested dict: name -> { stat_name: value, ... }
+    stats_dict = pokemons.set_index('name').to_dict(orient='index')
+
+
+    pokemon_stats = {
+        name: {k: (int(v) if pd.notna(v) and float(v).is_integer() else (None if pd.isna(v) else float(v)))
+               for k, v in stats.items()}
+        for name, stats in stats_dict.items()
+    }
+
+    return pokemon_stats

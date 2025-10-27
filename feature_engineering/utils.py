@@ -130,6 +130,7 @@ def get_dict_base_stats(data: list[dict]) -> dict:
 
     return pokemon_stats
 
+
 def get_dict_base_stats1(data: list[dict]) -> dict: 
     """Return a dict mapping pokemon name -> dict of base stats (base_hp, base_atk, base_def, base_spa, base_spd, base_spe)."""
     pokemons = pokedex(data)[['name','base_hp','base_atk','base_def','base_spa','base_spd','base_spe']].drop_duplicates().sort_values('name').reset_index(drop=True)
@@ -145,3 +146,27 @@ def get_dict_base_stats1(data: list[dict]) -> dict:
     }
 
     return pokemon_stats
+
+
+def get_all_status_conditions(data: list[dict]) -> set:
+    status_conditions = set()
+    for battle in data:
+        for turn in battle['battle_timeline']:
+            p1_status = turn['p1_pokemon_state']['status']
+            p2_status = turn['p2_pokemon_state']['status']
+            status_conditions.add(p1_status)
+            status_conditions.add(p2_status)
+    return status_conditions
+
+
+def get_all_effects(data: list[dict]) -> set:
+    effects = set()
+    for battle in data:
+        for turn in battle['battle_timeline']:
+            p1_effects = turn['p1_pokemon_state']['effects']
+            p2_effects = turn['p2_pokemon_state']['effects']
+            for effect in p1_effects:
+                effects.add(effect)
+            for effect in p2_effects:
+                effects.add(effect)
+    return effects

@@ -9,7 +9,8 @@ from .extractors import (
     avg_final_HP_pct,
     avg_boost_diff_per_turn,
     avg_stat_diff_per_turn,
-    accuracy_basepower_avg
+    accuracy_basepower_avg,
+    status_turn_diff
 )
 
 from .utils import (
@@ -21,7 +22,9 @@ from .utils import (
     get_dict_def_types, 
     get_dict_attacker_types, 
     get_dict_base_stats,
-    get_dict_base_stats1
+    get_dict_base_stats1,
+    get_all_status_conditions,
+    get_all_effects
 )
 from .Aggregator import generate_features
 
@@ -36,6 +39,7 @@ __all__ = [
     'avg_boost_diff_per_turn',
     'avg_stat_diff_per_turn',
     'accuracy_basepower_avg',
+    'status_turn_diff',
     # Utility Functions
     'get_dict_from_json',
     'pokedex',
@@ -46,6 +50,8 @@ __all__ = [
     'get_dict_attacker_types',
     'get_dict_base_stats',
     'get_dict_base_stats1',
+    'get_all_status_conditions',
+    'get_all_effects',
     # Aggregator Function
     'generate_features'
 ]

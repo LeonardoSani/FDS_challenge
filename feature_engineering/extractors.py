@@ -258,6 +258,9 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
 
 
 def category_impact_score(data: list[dict], difference=False, test=False):
+    """Given the database, calculate the average category impact score of all moves used by P1 and P2 throughout the turns.
+       Category impact score is defined as: base_atk/base_def for Physical moves and base_spa/base_spd for Special moves.
+    """
 
     dict_base_stats = get_dict_base_stats(data)
     final = []
@@ -680,6 +683,54 @@ def status_turn_diff(data: list[dict], difference: bool = False, test: bool = Fa
         else:
             result['total_status_turns_p1'] = total_status_turns_p1
             result['total_status_turns_p2'] = total_status_turns_p2
+
+        if not test:
+            result['player_won'] = battle['player_won']
+
+        final.append(result)
+    
+    return pd.DataFrame(final)
+
+
+def neg_effects_turn(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+    '''Count the total number of turns P1's Pokémon has a negative volatile effect 
+        and subtract the total turns P2's Pokémon has one.
+    '''
+
+    # This set is now tailored to your dataset
+    NEGATIVE_EFFECTS = {
+        'clamp', 'confusion', 'disable', 'firespin', 'wrap'
+    }
+
+    final = []
+    for battle in data:
+        total_neg_effects_turns_p1 = 0
+        total_neg_effects_turns_p2 = 0
+
+        for turn in battle['battle_timeline']:
+            p1_pokemon_state = turn.get('p1_pokemon_state', {})
+            p2_pokemon_state = turn.get('p2_pokemon_state', {})
+
+            effects_1 = p1_pokemon_state.get('effects', ['noeffect'])
+            effects_2 = p2_pokemon_state.get('effects', ['noeffect'])
+
+            # Check if *any* of P1's current effects are in our negative list
+            p1_has_neg_effect = any(effect in NEGATIVE_EFFECTS for effect in effects_1)
+            if p1_has_neg_effect:
+                total_neg_effects_turns_p1 += 1
+
+            # Check if *any* of P2's current effects are in our negative list
+            p2_has_neg_effect = any(effect in NEGATIVE_EFFECTS for effect in effects_2)
+            if p2_has_neg_effect:
+                total_neg_effects_turns_p2 += 1
+
+        result = {'battle_id': battle['battle_id']}
+
+        if difference:
+            result['neg_effects_turn_diff'] = total_neg_effects_turns_p1 - total_neg_effects_turns_p2
+        else:
+            result['total_neg_effects_turns_p1'] = total_neg_effects_turns_p1
+            result['total_neg_effects_turns_p2'] = total_neg_effects_turns_p2
 
         if not test:
             result['player_won'] = battle['player_won']

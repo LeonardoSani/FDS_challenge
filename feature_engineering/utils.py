@@ -149,6 +149,8 @@ def get_dict_base_stats1(data: list[dict]) -> dict:
 
 
 def get_all_status_conditions(data: list[dict]) -> set:
+    
+    """Create a set with all unique status conditions observed in the dataset"""
     status_conditions = set()
     for battle in data:
         for turn in battle['battle_timeline']:
@@ -160,6 +162,7 @@ def get_all_status_conditions(data: list[dict]) -> set:
 
 
 def get_all_effects(data: list[dict]) -> set:
+    """Create a set with all unique effects observed in the dataset"""
     effects = set()
     for battle in data:
         for turn in battle['battle_timeline']:

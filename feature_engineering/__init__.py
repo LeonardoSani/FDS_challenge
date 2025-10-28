@@ -10,7 +10,8 @@ from .extractors import (
     avg_boost_diff_per_turn,
     avg_stat_diff_per_turn,
     accuracy_basepower_avg,
-    status_turn_diff
+    status_turn_diff,
+    neg_effects_turn
 )
 
 from .utils import (
@@ -52,6 +53,7 @@ __all__ = [
     'get_dict_base_stats1',
     'get_all_status_conditions',
     'get_all_effects',
+    'neg_effects_turn',
     # Aggregator Function
     'generate_features'
 ]

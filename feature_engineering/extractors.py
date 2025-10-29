@@ -800,3 +800,55 @@ def avg_team_vs_lead_stats(data: list[dict], difference: bool = False, test: boo
         final.append(result)
 
     return pd.DataFrame(final)
+
+
+def faint_count_diff_extractor(data: list[dict], test: bool = False) -> pd.DataFrame:
+    """
+    Calculates the difference in the number of fainted Pokémon between P2 and P1.
+    
+    A positive value means P2 lost more Pokémon (good for P1).
+    A negative value means P1 lost more Pokémon (bad for P1).
+    """
+    final_features = []
+    
+    for battle in data:
+        battle_id = battle.get('battle_id')
+        
+        # Use sets to store the names of fainted Pokémon,
+        # ensuring we only count each Pokémon once.
+        p1_fainted_pokemon = set()
+        p2_fainted_pokemon = set()
+        
+        for turn in battle.get('battle_timeline', []):
+            # Check P1 state
+            p1_state = turn.get('p1_pokemon_state', {})
+            p1_name = p1_state.get('name')
+            p1_hp_pct = p1_state.get('hp_pct')
+            
+            if p1_name is not None and p1_hp_pct == 0.0:
+                p1_fainted_pokemon.add(p1_name)
+                
+            # Check P2 state
+            p2_state = turn.get('p2_pokemon_state', {})
+            p2_name = p2_state.get('name')
+            p2_hp_pct = p2_state.get('hp_pct')
+            
+            if p2_name is not None and p2_hp_pct == 0.0:
+                p2_fainted_pokemon.add(p2_name)
+        
+        # Calculate the feature: P2 faints - P1 faints
+        faint_diff = len(p2_fainted_pokemon) - len(p1_fainted_pokemon)
+        
+        battle_result = {
+            'battle_id': battle_id,
+            'faint_count_diff': faint_diff
+        }
+        
+        if not test:
+            # Include the target variable if it's not a test run
+            battle_result['player_won'] = battle.get('player_won')
+            
+        final_features.append(battle_result)
+        
+    # Convert the list of dictionaries to a DataFrame
+    return pd.DataFrame(final_features)

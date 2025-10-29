@@ -11,6 +11,7 @@ def generate_features(battle_data: list[dict], flag_test: bool) -> pd.DataFrame:
     if flag_test:
 
         df_list = [
+            avg_team_vs_lead_stats(battle_data,difference=True, test=flag_test),
             avg_effectiveness_1_1(battle_data, difference=True, include_status_moves=False, test=flag_test),
             category_impact_score(battle_data, difference=True, test=flag_test),
             avg_stab_multiplier(battle_data, difference=True, test=flag_test),
@@ -25,6 +26,7 @@ def generate_features(battle_data: list[dict], flag_test: bool) -> pd.DataFrame:
     else:
         flag_test = True
         df_list = [
+            avg_team_vs_lead_stats(battle_data,difference=True, test=flag_test),
             avg_effectiveness_1_1(battle_data, difference=True, include_status_moves=False, test=flag_test),
             category_impact_score(battle_data, difference=True, test= flag_test),
             avg_stab_multiplier(battle_data, difference=True, test=flag_test),

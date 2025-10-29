@@ -11,7 +11,8 @@ from .extractors import (
     avg_stat_diff_per_turn,
     accuracy_basepower_avg,
     status_turn_diff,
-    neg_effects_turn
+    neg_effects_turn,
+    avg_team_vs_lead_stats
 )
 
 from .utils import (
@@ -41,6 +42,9 @@ __all__ = [
     'avg_stat_diff_per_turn',
     'accuracy_basepower_avg',
     'status_turn_diff',
+    'neg_effects_turn',
+    'avg_team_vs_lead_stats',
+    
     # Utility Functions
     'get_dict_from_json',
     'pokedex',
@@ -53,7 +57,7 @@ __all__ = [
     'get_dict_base_stats1',
     'get_all_status_conditions',
     'get_all_effects',
-    'neg_effects_turn',
+    
     # Aggregator Function
     'generate_features'
 ]

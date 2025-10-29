@@ -738,3 +738,65 @@ def neg_effects_turn(data: list[dict], difference: bool = False, test: bool = Fa
         final.append(result)
     
     return pd.DataFrame(final)
+
+
+def avg_team_vs_lead_stats(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+    """
+    Calculates the average base stats for P1's team and compares them against
+    the base stats of P2's lead Pokémon.
+    This includes 'hp', 'atk', 'def', 'spa', 'spd', and 'spe'.
+
+    Args:
+        data (list): The list of battle dictionaries.
+        difference (bool): If True, returns the difference (P1 Avg - P2 Lead) in stats.
+        test (bool): If True, excludes the "player_won" column.
+
+    Returns:
+        A pandas DataFrame with the calculated stat comparisons.
+    """
+    final = []
+    # List of all 6 base stats
+    stats_to_calc = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
+
+    for battle in data:
+        result = {'battle_id': battle['battle_id']}
+        
+        # Get P1's full team and P2's lead
+        p1_team = battle.get('p1_team_details', [])
+        p2_lead = battle.get('p2_lead_details', {}) # P2's lead is a single dict
+
+        # --- Calculate P1 Mean Stats ---
+        p1_mean_stats = {}
+        for stat in stats_to_calc:
+            key = f'base_{stat}'
+            if p1_team: # Avoid division by zero if team is empty
+                # Calculate mean for the stat, default to 0 if stat is missing
+                p1_mean_stats[stat] = np.mean([pokemon.get(key, 0) for pokemon in p1_team])
+            else:
+                p1_mean_stats[stat] = 0.0
+
+        # --- Get P2 Lead Stats ---
+        p2_lead_stats = {}
+        for stat in stats_to_calc:
+            key = f'base_{stat}'
+            # Get the stat directly from the lead's dict, default to 0 if missing
+            p2_lead_stats[stat] = p2_lead.get(key, 0)
+
+        # --- Populate the result dictionary based on 'difference' flag ---
+        for stat in stats_to_calc:
+            if difference:
+                # Calculate the difference: P1_mean - P2_lead
+                result[f'avg_team_vs_lead_{stat}_diff'] = p1_mean_stats[stat] - p2_lead_stats[stat]
+            else:
+                # Store P1 avg and P2 lead stats separately
+                result[f'p1_avg_base_{stat}'] = p1_mean_stats[stat]
+                result[f'p2_lead_base_{stat}'] = p2_lead_stats[stat]
+
+        if not test:
+            # Ensure 'player_won' is present before trying to access it
+            if 'player_won' in battle:
+                result['player_won'] = battle['player_won']
+        
+        final.append(result)
+
+    return pd.DataFrame(final)

@@ -22,7 +22,9 @@ def generate_features(battle_data: list[dict], flag_test: bool) -> pd.DataFrame:
             avg_stat_diff_per_turn(battle_data, test=flag_test, stats=['hp', 'atk', 'def', 'spa', 'spd', 'spe']),
             accuracy_basepower_avg(battle_data, difference=True, test=flag_test),
             status_turn_diff(battle_data, difference=True, test=flag_test),
-            neg_effects_turn(battle_data, difference=True, test=flag_test)
+            neg_effects_turn(battle_data, difference=True, test=flag_test),
+            ratio_category_diff(battle_data, test=flag_test),
+            calculate_voluntary_swap_diff(battle_data, test=flag_test)
         ]
 
     else:
@@ -38,7 +40,9 @@ def generate_features(battle_data: list[dict], flag_test: bool) -> pd.DataFrame:
             avg_stat_diff_per_turn(battle_data, test=flag_test, stats=['hp', 'atk', 'def', 'spa', 'spd', 'spe']),
             accuracy_basepower_avg(battle_data, difference=True, test=flag_test),
             status_turn_diff(battle_data, difference=True, test=flag_test),
-            neg_effects_turn(battle_data, difference=True, test=False)
+            neg_effects_turn(battle_data, difference=True, test=flag_test),
+            ratio_category_diff(battle_data, test=flag_test),
+            calculate_voluntary_swap_diff(battle_data, test=False)
         ]
 
 

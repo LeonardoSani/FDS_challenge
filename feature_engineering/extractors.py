@@ -852,3 +852,136 @@ def faint_count_diff_extractor(data: list[dict], test: bool = False) -> pd.DataF
         
     # Convert the list of dictionaries to a DataFrame
     return pd.DataFrame(final_features)
+
+
+def ratio_category_diff(data: list[dict], test=False):
+    """ difference of proportions (p1-p2) of the categories used throughout the 30 turns
+    """
+
+    final = []
+    for battle in data:
+        p1_phy = 0
+        p1_spe = 0
+        p1_sta = 0
+
+        p2_phy = 0
+        p2_spe = 0
+        p2_sta = 0
+
+        total_turns = 0
+        for turn in battle['battle_timeline']:
+
+            p1_move_details = turn.get('p1_move_details', {})
+            p2_move_details = turn.get('p2_move_details', {})
+
+            if p1_move_details:
+                p1_category = p1_move_details.get('category').upper()
+                if p1_category == 'PHYSICAL':
+                    p1_phy +=1
+                elif p1_category == 'SPECIAL':
+                    p1_spe +=1
+                elif p1_category == 'STATUS':
+                    p1_sta +=1
+
+            if p2_move_details:
+                p2_category = p2_move_details.get('category').upper()
+                if p2_category == 'PHYSICAL':
+                    p2_phy +=1
+                elif p2_category == 'SPECIAL':
+                    p2_spe +=1
+                elif p2_category == 'STATUS':
+                    p2_sta +=1
+             
+            total_turns += 1
+
+        p1_phy_ratio = p1_phy / total_turns
+        p1_spe_ratio = p1_spe / total_turns
+        p1_sta_ratio = p1_sta / total_turns
+
+        p2_phy_ratio = p2_phy / total_turns
+        p2_spe_ratio = p2_spe / total_turns
+        p2_sta_ratio = p2_sta / total_turns
+
+        result = {'battle_id': battle['battle_id']}
+
+        result['phy_ratio_diff'] = p1_phy_ratio - p2_phy_ratio
+        result['spe_ratio_diff'] = p1_spe_ratio - p2_spe_ratio
+        result['sta_ratio_diff'] = p1_sta_ratio - p2_sta_ratio
+
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
+        
+    return pd.DataFrame(final)
+
+
+def calculate_voluntary_swap_diff(data: list[dict], test=False):
+    """
+    Calculates the difference in the number of *voluntary* swaps (p1-p2)
+    from the first 30 turns of a battle.
+    
+    This excludes forced replacements due to a Pokémon fainting.
+    """
+
+    final = []
+    for battle in data:
+        # Swap counters
+        p1_swaps = 0
+        p2_swaps = 0
+        
+        # Track last active Pokémon
+        p1_last_pokemon = None
+        p2_last_pokemon = None
+
+        # Process only the first 30 turns
+        timeline = battle.get('battle_timeline')
+        
+        # Skip empty or invalid battles
+        if not timeline:
+            continue 
+
+        for turn in timeline:
+            
+            current_p1_state = turn.get('p1_pokemon_state', {})
+            current_p2_state = turn.get('p2_pokemon_state', {})
+            
+            current_p1_name = current_p1_state.get('name')
+            current_p2_name = current_p2_state.get('name')
+            
+            # Check if a move was used this turn
+            p1_used_move = bool(turn.get('p1_move_details'))
+            p2_used_move = bool(turn.get('p2_move_details'))
+
+
+            
+            # Handle the first turn (initial leads are not swaps)
+            if p1_last_pokemon is None:
+                p1_last_pokemon = current_p1_name
+                p2_last_pokemon = current_p2_name
+            else:
+                p1_name_changed = current_p1_name != p1_last_pokemon
+                p2_name_changed = current_p2_name != p2_last_pokemon
+
+
+                # A voluntary swap is when the name changes AND no move is used.
+                if p1_name_changed and not p1_used_move:
+                    p1_swaps += 1
+                
+                if p2_name_changed and not p2_used_move:
+                    p2_swaps += 1
+
+                p1_last_pokemon = current_p1_name
+                p2_last_pokemon = current_p2_name
+             
+
+        
+        result = {'battle_id': battle['battle_id']}
+        result['voluntary_swap_diff'] = p1_swaps - p2_swaps
+
+        if not test:
+            result['player_won'] = battle.get('player_won')
+            
+        final.append(result)
+        
+    return pd.DataFrame(final)

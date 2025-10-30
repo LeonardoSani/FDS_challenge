@@ -13,7 +13,9 @@ from .extractors import (
     status_turn_diff,
     neg_effects_turn,
     avg_team_vs_lead_stats,
-    faint_count_diff_extractor
+    faint_count_diff_extractor,
+    ratio_category_diff,
+    calculate_voluntary_swap_diff
 )
 
 from .utils import (
@@ -46,6 +48,8 @@ __all__ = [
     'neg_effects_turn',
     'avg_team_vs_lead_stats',
     'faint_count_diff_extractor',
+    'ratio_category_diff',
+    'calculate_voluntary_swap_diff',
     
     # Utility Functions
     'get_dict_from_json',

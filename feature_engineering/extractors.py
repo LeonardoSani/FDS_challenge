@@ -802,12 +802,16 @@ def avg_team_vs_lead_stats(data: list[dict], difference: bool = False, test: boo
     return pd.DataFrame(final)
 
 
-def faint_count_diff_extractor(data: list[dict], test: bool = False) -> pd.DataFrame:
+def faint_count_diff_extractor(data: list[dict], difference: bool = True, test: bool = False) -> pd.DataFrame:
     """
-    Calculates the difference in the number of fainted Pokémon between P2 and P1.
+    Calculates the number of fainted Pokémon for both players.
     
-    A positive value means P2 lost more Pokémon (good for P1).
-    A negative value means P1 lost more Pokémon (bad for P1).
+    If difference is True (default):
+        Returns the difference (P2 faints - P1 faints)
+        A positive value means P2 lost more Pokémon (good for P1).
+        A negative value means P1 lost more Pokémon (bad for P1).
+    If difference is False:
+        Returns separate counts for P1 and P2.
     """
     final_features = []
     
@@ -836,13 +840,15 @@ def faint_count_diff_extractor(data: list[dict], test: bool = False) -> pd.DataF
             if p2_name is not None and p2_hp_pct == 0.0:
                 p2_fainted_pokemon.add(p2_name)
         
-        # Calculate the feature: P2 faints - P1 faints
-        faint_diff = len(p2_fainted_pokemon) - len(p1_fainted_pokemon)
+        battle_result = {'battle_id': battle_id}
         
-        battle_result = {
-            'battle_id': battle_id,
-            'faint_count_diff': faint_diff
-        }
+        if difference:
+            # Calculate the feature: P2 faints - P1 faints
+            faint_diff = len(p2_fainted_pokemon) - len(p1_fainted_pokemon)
+            battle_result['faint_count_diff'] = faint_diff
+        else:
+            battle_result['faint_count_p1'] = len(p1_fainted_pokemon)
+            battle_result['faint_count_p2'] = len(p2_fainted_pokemon)
         
         if not test:
             # Include the target variable if it's not a test run
@@ -854,8 +860,10 @@ def faint_count_diff_extractor(data: list[dict], test: bool = False) -> pd.DataF
     return pd.DataFrame(final_features)
 
 
-def ratio_category_diff(data: list[dict], test=False):
-    """ difference of proportions (p1-p2) of the categories used throughout the 30 turns
+def ratio_category_diff(data: list[dict], difference: bool = True, test=False):
+    """ Calculate the proportions of move categories used throughout the 30 turns.
+    If difference is True (default), returns the differences (p1-p2) of the proportions.
+    If difference is False, returns separate proportions for each player.
     """
 
     final = []
@@ -904,9 +912,17 @@ def ratio_category_diff(data: list[dict], test=False):
 
         result = {'battle_id': battle['battle_id']}
 
-        result['phy_ratio_diff'] = p1_phy_ratio - p2_phy_ratio
-        result['spe_ratio_diff'] = p1_spe_ratio - p2_spe_ratio
-        result['sta_ratio_diff'] = p1_sta_ratio - p2_sta_ratio
+        if difference:
+            result['phy_ratio_diff'] = p1_phy_ratio - p2_phy_ratio
+            result['spe_ratio_diff'] = p1_spe_ratio - p2_spe_ratio
+            result['sta_ratio_diff'] = p1_sta_ratio - p2_sta_ratio
+        else:
+            result['p1_phy_ratio'] = p1_phy_ratio
+            result['p1_spe_ratio'] = p1_spe_ratio
+            result['p1_sta_ratio'] = p1_sta_ratio
+            result['p2_phy_ratio'] = p2_phy_ratio
+            result['p2_spe_ratio'] = p2_spe_ratio
+            result['p2_sta_ratio'] = p2_sta_ratio
 
         if not test:
             result['player_won'] = battle['player_won']
@@ -916,10 +932,14 @@ def ratio_category_diff(data: list[dict], test=False):
     return pd.DataFrame(final)
 
 
-def calculate_voluntary_swap_diff(data: list[dict], test=False):
+def calculate_voluntary_swap_diff(data: list[dict], difference: bool = True, test=False):
     """
-    Calculates the difference in the number of *voluntary* swaps (p1-p2)
-    from the first 30 turns of a battle.
+    Calculates the number of voluntary swaps for both players.
+    
+    If difference is True (default):
+        Returns the difference in the number of voluntary swaps (p1-p2).
+    If difference is False:
+        Returns separate counts for P1 and P2.
     
     This excludes forced replacements due to a Pokémon fainting.
     """
@@ -977,7 +997,12 @@ def calculate_voluntary_swap_diff(data: list[dict], test=False):
 
         
         result = {'battle_id': battle['battle_id']}
-        result['voluntary_swap_diff'] = p1_swaps - p2_swaps
+        
+        if difference:
+            result['voluntary_swap_diff'] = p1_swaps - p2_swaps
+        else:
+            result['p1_voluntary_swaps'] = p1_swaps
+            result['p2_voluntary_swaps'] = p2_swaps
 
         if not test:
             result['player_won'] = battle.get('player_won')

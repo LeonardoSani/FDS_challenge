@@ -198,9 +198,15 @@ def perform_grid_search(pipeline, param_grid, X_train, Y_train, cv_splits=5):
     # Fit the grid search to the data
     grid_search.fit(X_train, Y_train)
     
+    best_index = grid_search.best_index_
+
+    # Use that index to get the standard deviation from the cv_results_ dictionary
+    best_std = grid_search.cv_results_['std_test_score'][best_index]
+
     print("\nGrid Search Complete.")
     print(f"Best parameters found: {grid_search.best_params_}")
     print(f"Best cross-validation accuracy: {grid_search.best_score_:.8f}")
+    print(f"Best CV accuracy std dev: {best_std:.8f}")
     
     # Return the best model found
     return grid_search.best_estimator_

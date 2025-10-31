@@ -4,7 +4,7 @@ from .extractors import *
 
 
 
-def generate_features(battle_data: list[dict], flag_test: bool, difference: bool = True) -> pd.DataFrame:
+def generate_features(battle_data: list[dict], flag_test: bool, difference: bool = True, one_hot: bool = True) -> pd.DataFrame:
     """ Takes the raw battle data, generates all features, and joins them
     into a single DataFrame. """
     
@@ -24,7 +24,10 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
             status_turn_diff(battle_data, difference=difference, test=flag_test),
             neg_effects_turn(battle_data, difference=difference, test=flag_test),
             ratio_category_diff(battle_data, difference=difference,test=flag_test),
-            calculate_voluntary_swap_diff(battle_data, difference=difference, test=flag_test)
+            calculate_voluntary_swap_diff(battle_data, difference=difference, test=flag_test),
+            hp_advantage_flip_count(battle_data, test=flag_test),
+            damage_efficiency_ratio(battle_data, difference=difference, test=flag_test),
+            pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test)
         ]
 
     else:
@@ -42,7 +45,10 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
             status_turn_diff(battle_data, difference=difference, test=flag_test),
             neg_effects_turn(battle_data, difference=difference, test=flag_test),
             ratio_category_diff(battle_data, difference=difference ,test=flag_test),
-            calculate_voluntary_swap_diff(battle_data, difference=difference,test=False)
+            calculate_voluntary_swap_diff(battle_data, difference=difference,test=flag_test),
+            hp_advantage_flip_count(battle_data, test=flag_test),
+            damage_efficiency_ratio(battle_data, difference=difference, test=flag_test),
+            pokemon_encoding(battle_data, one_hot=one_hot , test=False)
         ]
 
 

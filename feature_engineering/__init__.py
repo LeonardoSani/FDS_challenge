@@ -15,7 +15,10 @@ from .extractors import (
     avg_team_vs_lead_stats,
     faint_count_diff_extractor,
     ratio_category_diff,
-    calculate_voluntary_swap_diff
+    calculate_voluntary_swap_diff,
+    hp_advantage_flip_count,
+    damage_efficiency_ratio,
+    pokemon_encoding
 )
 
 from .utils import (
@@ -50,6 +53,9 @@ __all__ = [
     'faint_count_diff_extractor',
     'ratio_category_diff',
     'calculate_voluntary_swap_diff',
+    'hp_advantage_flip_count',
+    'damage_efficiency_ratio',
+    'pokemon_encoding',
     
     # Utility Functions
     'get_dict_from_json',

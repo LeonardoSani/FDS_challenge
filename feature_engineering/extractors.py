@@ -1010,3 +1010,258 @@ def calculate_voluntary_swap_diff(data: list[dict], difference: bool = True, tes
         final.append(result)
         
     return pd.DataFrame(final)
+
+
+def hp_advantage_flip_count(data: list[dict], test: bool = False) -> pd.DataFrame:
+    """
+    Counts how many times the HP advantage "flips" between P1 and P2.
+    A flip occurs when the player with the higher hp_pct changes
+    from one turn to the next.
+    
+    This measures battle volatility.
+
+    Args:
+        data (list): The list of battle dictionaries.
+        
+        test (bool): If True, excludes the "player_won" column.
+
+    Returns:
+        A pandas DataFrame with the calculated flip counts.
+    """
+    final = []
+    for battle in data:
+        result = {'battle_id': battle['battle_id']}
+        
+        total_flips = 0
+        p1_gained_adv_count = 0
+        p2_gained_adv_count = 0
+        
+        # -1 if P2 has more HP, 0 if equal, 1 if P1 has more HP
+        last_advantage_state = 0 
+
+        for turn in battle['battle_timeline']:
+            p1_state = turn.get('p1_pokemon_state', {})
+            p2_state = turn.get('p2_pokemon_state', {})
+
+            p1_hp = p1_state.get('hp_pct', 0.0)
+            p2_hp = p2_state.get('hp_pct', 0.0)
+
+            current_advantage_state = 0
+            if p1_hp > p2_hp:
+                current_advantage_state = 1
+            elif p2_hp > p1_hp:
+                current_advantage_state = -1
+
+            # Check for a flip (and ignore state 0 -> 1 or 0 -> -1 at the start)
+            if current_advantage_state != last_advantage_state and last_advantage_state != 0:
+                total_flips += 1
+                if current_advantage_state == 1: # P1 just gained the advantage
+                    p1_gained_adv_count += 1
+                elif current_advantage_state == -1: # P2 just gained the advantage
+                    p2_gained_adv_count += 1
+
+            # Update the last state *only if* it's not a tie
+            if current_advantage_state != 0:
+                last_advantage_state = current_advantage_state
+        
+
+        result['total_hp_adv_flips'] = total_flips
+
+        if not test:
+            result['player_won'] = battle.get('player_won')
+            
+        final.append(result)
+        
+    return pd.DataFrame(final)
+
+
+def damage_efficiency_ratio(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+    """
+    Calculates the Damage Efficiency Ratio (DER) for both players.
+    
+    DER is defined as (Total Damage Dealt) / (Total Damage Taken).
+    This feature tracks all HP loss for all known Pokémon on each team
+    throughout the battle timeline.
+
+    Handling Division by Zero:
+    - If a player takes 0.0 damage, their DER is considered "infinite."
+    - To represent this numerically, we set the DER to (Total Damage Dealt + 1.0).
+    - This ensures that a player who dealt damage and took none has a higher
+      score than a player who dealt no damage and took none (DER = 1.0).
+
+    Args:
+        data (list): The list of battle dictionaries.
+        difference (bool): If True, returns the difference (P1_DER - P2_DER).
+        test (bool): If True, excludes the "player_won" column.
+
+    Returns:
+        A pandas DataFrame with the calculated DER features.
+    """
+    final = []
+    
+    for battle in data:
+        result = {'battle_id': battle['battle_id']}
+        
+        # Track total HP loss for each team.
+        # total_damage_dealt_by_p1 == total_hp_loss_by_p2
+        # total_damage_dealt_by_p2 == total_hp_loss_by_p1
+        total_hp_loss_by_p1 = 0.0
+        total_hp_loss_by_p2 = 0.0
+        
+        # Dictionaries to store the last known HP of each Pokémon
+        p1_team_hp = {}
+        p2_team_hp = {}
+
+        # Initialize P1's team with 100% HP
+        for pokemon in battle.get('p1_team_details', []):
+            if pokemon.get('name'):
+                p1_team_hp[pokemon.get('name')] = 1.0
+        
+        # Initialize P2's lead with 100% HP
+        p2_lead = battle.get('p2_lead_details', {})
+        if p2_lead.get('name'):
+            p2_team_hp[p2_lead.get('name')] = 1.0
+
+        # Iterate through the timeline to sum up all HP loss
+        for turn in battle.get('battle_timeline', []):
+            p1_state = turn.get('p1_pokemon_state', {})
+            p2_state = turn.get('p2_pokemon_state', {})
+            
+            p1_name = p1_state.get('name')
+            p2_name = p2_state.get('name')
+            
+            p1_hp_pct = p1_state.get('hp_pct')
+            p2_hp_pct = p2_state.get('hp_pct')
+            
+            # Skip turns with incomplete data
+            if p1_name is None or p2_name is None or p1_hp_pct is None or p2_hp_pct is None:
+                continue
+
+            # --- Calculate P1 HP Loss (Damage Dealt by P2) ---
+            # Get last known HP, default to 1.0 for the first time seeing it
+            last_p1_hp = p1_team_hp.get(p1_name, 1.0)
+            
+            if p1_hp_pct < last_p1_hp:
+                # Add the difference (damage taken)
+                total_hp_loss_by_p1 += (last_p1_hp - p1_hp_pct)
+            
+            # Update the last known HP for this Pokémon
+            p1_team_hp[p1_name] = p1_hp_pct
+            
+            # --- Calculate P2 HP Loss (Damage Dealt by P1) ---
+            # Get last known HP, default to 1.0 for the first time seeing it
+            last_p2_hp = p2_team_hp.get(p2_name, 1.0)
+            
+            if p2_hp_pct < last_p2_hp:
+                # Add the difference (damage taken)
+                total_hp_loss_by_p2 += (last_p2_hp - p2_hp_pct)
+            
+            # Update the last known HP for this Pokémon
+            p2_team_hp[p2_name] = p2_hp_pct
+
+        # --- Calculate Final DERs ---
+        
+        # P1's DER: Damage P1 Dealt (P2 HP Loss) / Damage P1 Took (P1 HP Loss)
+        if total_hp_loss_by_p1 == 0.0:
+            p1_der = total_hp_loss_by_p2 + 1.0  # Handle division by zero
+        else:
+            p1_der = total_hp_loss_by_p2 / total_hp_loss_by_p1
+            
+        # P2's DER: Damage P2 Dealt (P1 HP Loss) / Damage P2 Took (P2 HP Loss)
+        if total_hp_loss_by_p2 == 0.0:
+            p2_der = total_hp_loss_by_p1 + 1.0  # Handle division by zero
+        else:
+            p2_der = total_hp_loss_by_p1 / total_hp_loss_by_p2
+
+        # --- Format Output ---
+        if difference:
+            result['der_diff'] = p1_der - p2_der
+        else:
+            result['p1_der'] = p1_der
+            result['p2_der'] = p2_der
+        
+        if not test:
+            result['player_won'] = battle.get('player_won')
+            
+        final.append(result)
+        
+    return pd.DataFrame(final)
+
+
+def pokemon_encoding(data: list[dict], one_hot: bool = False, test: bool = False) -> pd.DataFrame:
+    """Encode pokemon presence or indices for P1 and P2.
+    
+    one_hot=True:
+        creates columns p1_<pokemon> and p2_<pokemon> with 1/0 presence flags.
+    one_hot=False:
+        creates p1_pokemon_1..6 and p2_pokemon_1..6 with index in pokemon_list or -1 if missing/unknown.
+        For P2, indices are assigned in order of appearance in the battle.
+    """
+    pokemon_list = [
+        'alakazam', 'articuno', 'chansey', 'charizard', 'cloyster',
+        'dragonite', 'exeggutor', 'gengar', 'golem', 'jolteon',
+        'jynx', 'lapras', 'persian', 'rhydon', 'slowbro',
+        'snorlax', 'starmie', 'tauros', 'victreebel', 'zapdos'
+    ]
+    name_to_idx = {n: i for i, n in enumerate(pokemon_list)}
+
+    def team_names_from_details(team_details: list[dict]) -> list[str]:
+        names = []
+        for p in team_details or []:
+            n = p.get('name')
+            if n:
+                names.append(n.lower())
+        return names
+
+    final = []
+    for battle in data:
+        row = {'battle_id': battle.get('battle_id')}
+        # P1 team from details (expected present)
+        p1_names = team_names_from_details(battle.get('p1_team_details', []))
+        
+        # P2 team: track Pokémon as they appear in battle
+        p2_names = []
+        # Add P2's lead Pokémon first
+        lead_name = battle.get('p2_lead_details', {}).get('name')
+        if lead_name:
+            p2_names.append(lead_name.lower())
+        
+        # Then track any other Pokémon that appear in the timeline
+        for turn in battle.get('battle_timeline', []):
+            n = (turn.get('p2_pokemon_state') or {}).get('name')
+            if n:
+                nl = n.lower()
+                if nl not in p2_names:  # Only add if not already seen
+                    p2_names.append(nl)
+
+        # Add encoding to the row based on the chosen method
+        if one_hot:
+            # One-hot encoding: 1 if pokemon is present, 0 if not
+            for pname in pokemon_list:
+                row[f'p1_{pname}'] = 1 if pname in p1_names else 0
+                row[f'p2_{pname}'] = 1 if pname in p2_names else 0
+        else:
+            # Index encoding
+            # P1: we know the full team, so encode all 6 slots
+            for i in range(6):
+                if i < len(p1_names):
+                    row[f'p1_pokemon_{i+1}'] = name_to_idx.get(p1_names[i], -1)
+                else:
+                    row[f'p1_pokemon_{i+1}'] = -1
+                    
+            # P2: we only know observed Pokémon in order of appearance
+            # We still create 6 slots for consistency, but most will be -1
+            for i in range(6):
+                if i < len(p2_names):
+                    row[f'p2_pokemon_{i+1}'] = name_to_idx.get(p2_names[i], -1)
+                else:
+                    row[f'p2_pokemon_{i+1}'] = -1
+
+        # Add the win/loss label if not in test mode
+        if not test:
+            row['player_won'] = battle.get('player_won')
+            
+        final.append(row)
+
+    return pd.DataFrame(final)
+    

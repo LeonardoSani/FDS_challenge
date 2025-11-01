@@ -16,7 +16,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
             avg_effectiveness_1_1(battle_data, difference=difference, include_status_moves=False, test=flag_test),
             category_impact_score(battle_data, difference=difference, test=flag_test),
             avg_stab_multiplier(battle_data, difference=difference, test=flag_test),
-            faint_count_diff_extractor(battle_data, difference=difference,test=flag_test),
+            #faint_count_diff_extractor(battle_data, difference=difference,test=flag_test), # generalized by pokemon encoding
             avg_final_HP_pct(battle_data, difference=difference, test=flag_test),
             avg_boost_diff_per_turn(battle_data, difference=difference, test=flag_test),
             avg_stat_diff_per_turn(battle_data, test=flag_test, stats=['hp', 'atk', 'def', 'spa', 'spd', 'spe']),
@@ -37,7 +37,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
             avg_effectiveness_1_1(battle_data, difference=difference, include_status_moves=False, test=flag_test),
             category_impact_score(battle_data, difference=difference, test= flag_test),
             avg_stab_multiplier(battle_data, difference=difference, test=flag_test),
-            faint_count_diff_extractor(battle_data, difference=difference,test=flag_test),
+            #faint_count_diff_extractor(battle_data, difference=difference,test=flag_test),
             avg_final_HP_pct(battle_data, difference=difference, test=flag_test),
             avg_boost_diff_per_turn(battle_data, difference=difference, test=flag_test),
             avg_stat_diff_per_turn(battle_data, test=flag_test, stats=['hp', 'atk', 'def', 'spa', 'spd', 'spe']),

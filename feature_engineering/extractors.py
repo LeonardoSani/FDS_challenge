@@ -1,5 +1,5 @@
 # feature_engineering/extractors.py
-
+from collections import defaultdict
 import numpy as np
 import pandas as pd
 from .utils import get_dict_def_types, get_dict_attacker_types, get_dict_base_stats, effectiveness, get_dict_base_stats1
@@ -755,33 +755,34 @@ def avg_team_vs_lead_stats(data: list[dict], difference: bool = False, test: boo
         A pandas DataFrame with the calculated stat comparisons.
     """
     final = []
+    
     # List of all 6 base stats
     stats_to_calc = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
-
+    
     for battle in data:
         result = {'battle_id': battle['battle_id']}
         
         # Get P1's full team and P2's lead
         p1_team = battle.get('p1_team_details', [])
-        p2_lead = battle.get('p2_lead_details', {}) # P2's lead is a single dict
-
+        p2_lead = battle.get('p2_lead_details', {})  # P2's lead is a single dict
+        
         # --- Calculate P1 Mean Stats ---
         p1_mean_stats = {}
         for stat in stats_to_calc:
             key = f'base_{stat}'
-            if p1_team: # Avoid division by zero if team is empty
+            if p1_team:  # Avoid division by zero if team is empty
                 # Calculate mean for the stat, default to 0 if stat is missing
                 p1_mean_stats[stat] = np.mean([pokemon.get(key, 0) for pokemon in p1_team])
             else:
                 p1_mean_stats[stat] = 0.0
-
+        
         # --- Get P2 Lead Stats ---
         p2_lead_stats = {}
         for stat in stats_to_calc:
             key = f'base_{stat}'
             # Get the stat directly from the lead's dict, default to 0 if missing
             p2_lead_stats[stat] = p2_lead.get(key, 0)
-
+        
         # --- Populate the result dictionary based on 'difference' flag ---
         for stat in stats_to_calc:
             if difference:
@@ -791,16 +792,16 @@ def avg_team_vs_lead_stats(data: list[dict], difference: bool = False, test: boo
                 # Store P1 avg and P2 lead stats separately
                 result[f'p1_avg_base_{stat}'] = p1_mean_stats[stat]
                 result[f'p2_lead_base_{stat}'] = p2_lead_stats[stat]
-
+        
         if not test:
             # Ensure 'player_won' is present before trying to access it
             if 'player_won' in battle:
                 result['player_won'] = battle['player_won']
         
         final.append(result)
-
+    
     return pd.DataFrame(final)
-
+       
 
 def faint_count_diff_extractor(data: list[dict], difference: bool = True, test: bool = False) -> pd.DataFrame:
     """
@@ -1205,57 +1206,83 @@ def pokemon_encoding(data: list[dict], one_hot: bool = False, test: bool = False
     ]
     name_to_idx = {n: i for i, n in enumerate(pokemon_list)}
 
-    def team_names_from_details(team_details: list[dict]) -> list[str]:
-        names = []
-        for p in team_details or []:
-            n = p.get('name')
-            if n:
-                names.append(n.lower())
-        return names
-
     final = []
     for battle in data:
         row = {'battle_id': battle.get('battle_id')}
-        # P1 team from details (expected present)
-        p1_names = team_names_from_details(battle.get('p1_team_details', []))
         
-        # P2 team: track Pokémon as they appear in battle
+        # Initialize empty lists for both players
+        p1_names = []
         p2_names = []
-        # Add P2's lead Pokémon first
-        lead_name = battle.get('p2_lead_details', {}).get('name')
-        if lead_name:
-            p2_names.append(lead_name.lower())
         
-        # Then track any other Pokémon that appear in the timeline
+        # Track Pokemon only as they appear in the timeline for both players
         for turn in battle.get('battle_timeline', []):
-            n = (turn.get('p2_pokemon_state') or {}).get('name')
-            if n:
-                nl = n.lower()
-                if nl not in p2_names:  # Only add if not already seen
-                    p2_names.append(nl)
+            # Track P1's Pokemon
+            n1 = (turn.get('p1_pokemon_state') or {}).get('name')
+            if n1:
+                nl1 = n1.lower()
+                if nl1 not in p1_names:  # Only add if not already seen
+                    p1_names.append(nl1)
+                    
+            # Track P2's Pokemon
+            n2 = (turn.get('p2_pokemon_state') or {}).get('name')
+            if n2:
+                nl2 = n2.lower()
+                if nl2 not in p2_names:  # Only add if not already seen
+                    p2_names.append(nl2)
+
+        # Track fainted status for each Pokemon
+        p1_fainted = set()
+        p2_fainted = set()
+        for turn in battle.get('battle_timeline', []):
+            p1_state = turn.get('p1_pokemon_state', {})
+            p2_state = turn.get('p2_pokemon_state', {})
+            
+            # Check P1 Pokemon
+            p1_name = p1_state.get('name')
+            if p1_name:
+                p1_name = p1_name.lower()
+                if p1_state.get('hp_pct') == 0.0:
+                    p1_fainted.add(p1_name)
+            
+            # Check P2 Pokemon
+            p2_name = p2_state.get('name')
+            if p2_name:
+                p2_name = p2_name.lower()
+                if p2_state.get('hp_pct') == 0.0:
+                    p2_fainted.add(p2_name)
 
         # Add encoding to the row based on the chosen method
         if one_hot:
-            # One-hot encoding: 1 if pokemon is present, 0 if not
+            # One-hot encoding: separate columns for seen and fainted
             for pname in pokemon_list:
-                row[f'p1_{pname}'] = 1 if pname in p1_names else 0
-                row[f'p2_{pname}'] = 1 if pname in p2_names else 0
+                # P1 encoding
+                row[f'p1_{pname}_seen'] = 1 if pname in p1_names else 0
+                row[f'p1_{pname}_fainted'] = 1 if pname in p1_fainted else 0
+                
+                # P2 encoding
+                row[f'p2_{pname}_seen'] = 1 if pname in p2_names else 0
+                row[f'p2_{pname}_fainted'] = 1 if pname in p2_fainted else 0
         else:
-            # Index encoding
-            # P1: we know the full team, so encode all 6 slots
+            # Index encoding with status
+            # P1: encode Pokemon index and status
             for i in range(6):
                 if i < len(p1_names):
-                    row[f'p1_pokemon_{i+1}'] = name_to_idx.get(p1_names[i], -1)
+                    pokemon_name = p1_names[i]
+                    row[f'p1_pokemon_{i+1}'] = name_to_idx.get(pokemon_name, -1)
+                    row[f'p1_status_{i+1}'] = 0 if pokemon_name in p1_fainted else 1
                 else:
                     row[f'p1_pokemon_{i+1}'] = -1
+                    row[f'p1_status_{i+1}'] = -1  # not seen in timeline
                     
-            # P2: we only know observed Pokémon in order of appearance
-            # We still create 6 slots for consistency, but most will be -1
+            # P2: encode Pokemon index and status
             for i in range(6):
                 if i < len(p2_names):
-                    row[f'p2_pokemon_{i+1}'] = name_to_idx.get(p2_names[i], -1)
+                    pokemon_name = p2_names[i]
+                    row[f'p2_pokemon_{i+1}'] = name_to_idx.get(pokemon_name, -1)
+                    row[f'p2_status_{i+1}'] = 0 if pokemon_name in p2_fainted else 1
                 else:
                     row[f'p2_pokemon_{i+1}'] = -1
+                    row[f'p2_status_{i+1}'] = -1  # not seen in timeline
 
         # Add the win/loss label if not in test mode
         if not test:

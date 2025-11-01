@@ -654,35 +654,73 @@ def accuracy_basepower_avg(data: list[dict], difference: bool = False, test: boo
     return pd.DataFrame(final)
 
 
-def status_turn_diff(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
-    '''Count the total number of turns P1's Pokémon has a negative status (something different than nostatus) 
-        and subtract the total turns P2's Pokémon has one.'''
+def granular_turn_counts(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+    """
+    Counts the total number of turns each player's Pokémon is afflicted
+    with *each specific* status and negative volatile effect.
+    """
+    
+    # Define all statuses and effects we care about
+    # This ensures all columns are created, even if one doesn't appear
+    ALL_STATUSES = ['slp', 'par', 'psn', 'brn', 'frz']
+    NEGATIVE_EFFECTS = ['clamp', 'confusion', 'disable', 'firespin', 'wrap']
 
     final = []
     for battle in data:
-        total_status_turns_p1 = 0
-        total_status_turns_p2 = 0
+        # Use defaultdict to automatically handle new keys with a 0 count
+        p1_status_counts = defaultdict(int)
+        p2_status_counts = defaultdict(int)
+        p1_effect_counts = defaultdict(int)
+        p2_effect_counts = defaultdict(int)
 
         for turn in battle['battle_timeline']:
-            p1_pokemon_state = turn.get('p1_pokemon_state', {})
-            p2_pokemon_state = turn.get('p2_pokemon_state', {})
+            p1_state = turn.get('p1_pokemon_state', {})
+            p2_state = turn.get('p2_pokemon_state', {})
 
-            status_1 = p1_pokemon_state.get('status', 'nostatus').lower() 
-            status_2 = p2_pokemon_state.get('status', 'nostatus').lower()
-
+            # --- Process Statuses ---
+            status_1 = p1_state.get('status', 'nostatus').lower()
             if status_1 != 'nostatus':
-                total_status_turns_p1 += 1
+                p1_status_counts[status_1] += 1
 
+            status_2 = p2_state.get('status', 'nostatus').lower()
             if status_2 != 'nostatus':
-                total_status_turns_p2 += 1
+                p2_status_counts[status_2] += 1
 
+            # --- Process Volatile Effects ---
+            effects_1 = p1_state.get('effects', [])
+            for effect in effects_1:
+                if effect in NEGATIVE_EFFECTS:
+                    p1_effect_counts[effect] += 1
+            
+            effects_2 = p2_state.get('effects', [])
+            for effect in effects_2:
+                if effect in NEGATIVE_EFFECTS:
+                    p2_effect_counts[effect] += 1
+
+        # --- Build the result row ---
         result = {'battle_id': battle['battle_id']}
 
-        if difference:
-            result['status_turn_diff'] = total_status_turns_p1 - total_status_turns_p2
-        else:
-            result['total_status_turns_p1'] = total_status_turns_p1
-            result['total_status_turns_p2'] = total_status_turns_p2
+        # Add all status counts
+        for status in ALL_STATUSES:
+            p1_turns = p1_status_counts[status] # Gets 0 if status never appeared
+            p2_turns = p2_status_counts[status]
+            
+            if difference:
+                result[f'{status}_turn_diff'] = p1_turns - p2_turns
+            else:
+                result[f'p1_{status}_turns'] = p1_turns
+                result[f'p2_{status}_turns'] = p2_turns
+        
+        # Add all negative effect counts
+        for effect in NEGATIVE_EFFECTS:
+            p1_turns = p1_effect_counts[effect]
+            p2_turns = p2_effect_counts[effect]
+            
+            if difference:
+                result[f'{effect}_turn_diff'] = p1_turns - p2_turns
+            else:
+                result[f'p1_{effect}_turns'] = p1_turns
+                result[f'p2_{effect}_turns'] = p2_turns
 
         if not test:
             result['player_won'] = battle['player_won']
@@ -691,55 +729,7 @@ def status_turn_diff(data: list[dict], difference: bool = False, test: bool = Fa
     
     return pd.DataFrame(final)
 
-
-def neg_effects_turn(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
-    '''Count the total number of turns P1's Pokémon has a negative volatile effect 
-        and subtract the total turns P2's Pokémon has one.
-    '''
-
-    # This set is now tailored to your dataset
-    NEGATIVE_EFFECTS = {
-        'clamp', 'confusion', 'disable', 'firespin', 'wrap'
-    }
-
-    final = []
-    for battle in data:
-        total_neg_effects_turns_p1 = 0
-        total_neg_effects_turns_p2 = 0
-
-        for turn in battle['battle_timeline']:
-            p1_pokemon_state = turn.get('p1_pokemon_state', {})
-            p2_pokemon_state = turn.get('p2_pokemon_state', {})
-
-            effects_1 = p1_pokemon_state.get('effects', ['noeffect'])
-            effects_2 = p2_pokemon_state.get('effects', ['noeffect'])
-
-            # Check if *any* of P1's current effects are in our negative list
-            p1_has_neg_effect = any(effect in NEGATIVE_EFFECTS for effect in effects_1)
-            if p1_has_neg_effect:
-                total_neg_effects_turns_p1 += 1
-
-            # Check if *any* of P2's current effects are in our negative list
-            p2_has_neg_effect = any(effect in NEGATIVE_EFFECTS for effect in effects_2)
-            if p2_has_neg_effect:
-                total_neg_effects_turns_p2 += 1
-
-        result = {'battle_id': battle['battle_id']}
-
-        if difference:
-            result['neg_effects_turn_diff'] = total_neg_effects_turns_p1 - total_neg_effects_turns_p2
-        else:
-            result['total_neg_effects_turns_p1'] = total_neg_effects_turns_p1
-            result['total_neg_effects_turns_p2'] = total_neg_effects_turns_p2
-
-        if not test:
-            result['player_won'] = battle['player_won']
-
-        final.append(result)
     
-    return pd.DataFrame(final)
-
-
 def avg_team_vs_lead_stats(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
     """
     Calculates the average base stats for P1's team and compares them against

@@ -182,7 +182,7 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
             
             battle_result = {'battle_id': battle['battle_id']}
             if difference:
-                battle_result['avg_diff'] = avg_eff_p1 - avg_eff_p2
+                battle_result['avg_effectiveness_diff'] = avg_eff_p1 - avg_eff_p2
             else: 
                 battle_result['avg_effectiveness_p1'] = avg_eff_p1
                 battle_result['avg_effectiveness_p2'] = avg_eff_p2
@@ -244,7 +244,7 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
                 
                 # Store results for the segment
                 if difference:
-                    battle_data[f'avg_diff_{segment_name}'] = avg_eff_p1 - avg_eff_p2
+                    battle_data[f'avg_effectiveness_diff_{segment_name}'] = avg_eff_p1 - avg_eff_p2
                 else:
                     battle_data[f'avg_effectiveness_p1_{segment_name}'] = avg_eff_p1
                     battle_data[f'avg_effectiveness_p2_{segment_name}'] = avg_eff_p2
@@ -816,7 +816,7 @@ def avg_boost_diff_per_turn(data: list[dict], difference: bool = False, test: bo
     return pd.DataFrame(final)
 
 
-def accuracy_basepower_avg(data: list[dict], difference: bool = False, divide_turns: bool = True, test: bool = False) -> pd.DataFrame:
+def accuracy_avg(data: list[dict], difference: bool = False, divide_turns: bool = True, test: bool = False) -> pd.DataFrame:
     '''
     Calculate the average accuracy and base power of moves used by P1 and P2 throughout the battle.
     For turns where move_details is null (no move was made), accuracy and base_power are treated as 0.
@@ -1632,22 +1632,27 @@ def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = Fa
     Calculates the average approximate damage dealt by P1 and P2 per turn
     over the entire battle, based on the Gen 1 damage formula.
     
-    Formula: ( ( (2*Lvl+10)/250 * Atk/Def * Base) + 2 ) * Modifier
+    Formula: ( ( (2*Lvl)/5 +2) * Atk/Def * Base)/50 + 2 ) * Modifier
     
     Approximations made:
-    - Level (Lvl) is 100. Constant = (2*100+10)/250 = 0.84
+    - Level (Lvl) is 100. Constant = (2*100)/5 + 2 = 42
     - Atk/Def stats are Base Stats (not boosted).
-    - Modifier = STAB * Type * random_avg
+    - Modifier = STAB * Type * random_avg * crt
     - STAB is 1.5 if applicable, 1.0 otherwise.
     - Type is the type effectiveness multiplier.
-    - random_avg is (0.85 + 1.0) / 2 = 0.925
-    - Critical hits and 'other' modifiers are ignored (treated as 1.0).
+    - random_avg is (217..255)/255 = 0.925
+    - Critical hits (crt) treated as 1.0
     - Status moves deal 0.0 damage.
+    
+    Args:
+        data: List of battle dictionaries
+        difference: If True, returns the difference (P1 - P2) in average damage
+        test: If True, excludes player_won from output
     """
     
     # Constants from the damage formula
-    LEVEL_CONSTANT = 0.84  # ( (2 * 100 + 10) / 250 )
-    RANDOM_AVG = 0.925     # Average of [0.85, 1.0]
+    LEVEL_CONSTANT = 42.0  # ( (2 * 100) / 5 + 2 )
+    RANDOM_AVG = 0.925     # Average of (217..255)/255
 
     # Get helper dictionaries
     dict_base_stats = get_dict_base_stats(data)
@@ -1657,10 +1662,12 @@ def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = Fa
     final = []
     
     for battle in data:
+        # Calculate damage for entire battle
         total_turns = 0
         total_approx_damage_p1 = 0.0
         total_approx_damage_p2 = 0.0
         
+        # Process all turns
         for turn in battle['battle_timeline']:
             p1_pokemon_state = turn.get('p1_pokemon_state', {})
             p2_pokemon_state = turn.get('p2_pokemon_state', {})
@@ -1705,7 +1712,7 @@ def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = Fa
                         modifier_1 = stab_1 * type_eff_1 * RANDOM_AVG
                         
                         # 3. Calculate Damage
-                        damage_1 = ((LEVEL_CONSTANT * stat_ratio_1 * base_power_1) + 2) * modifier_1
+                        damage_1 = (((LEVEL_CONSTANT * stat_ratio_1 * base_power_1) / 50) + 2) * modifier_1
                         total_approx_damage_p1 += damage_1
 
                 # --- P2 Damage Calculation ---
@@ -1731,11 +1738,12 @@ def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = Fa
                         modifier_2 = stab_2 * type_eff_2 * RANDOM_AVG
                         
                         # 3. Calculate Damage
-                        damage_2 = ((LEVEL_CONSTANT * stat_ratio_2 * base_power_2) + 2) * modifier_2
+                        damage_2 = (((LEVEL_CONSTANT * stat_ratio_2 * base_power_2) / 50) + 2) * modifier_2
                         total_approx_damage_p2 += damage_2
             
             total_turns += 1
 
+        # Calculate averages for entire battle
         avg_damage_p1 = total_approx_damage_p1 / total_turns if total_turns > 0 else 0.0
         avg_damage_p2 = total_approx_damage_p2 / total_turns if total_turns > 0 else 0.0
 

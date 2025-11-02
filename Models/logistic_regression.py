@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 def plot_pca_variance(X):
     """
@@ -114,6 +115,7 @@ def create_model_pipeline_poly(c_value=1.0, degree=2, max_iter=1000, random_stat
     
     from sklearn.preprocessing import PolynomialFeatures
 
+
     # Create a list of (name, transformer) tuples
     steps = [
         ('scaler', StandardScaler()),
@@ -207,6 +209,16 @@ def perform_grid_search(pipeline, param_grid, X_train, Y_train, cv_splits=5):
     print(f"Best parameters found: {grid_search.best_params_}")
     print(f"Best cross-validation accuracy: {grid_search.best_score_:.8f}")
     print(f"Best CV accuracy std dev: {best_std:.8f}")
+    
+    # Get predictions from best model for confusion matrix
+    Y_pred = grid_search.predict(X_train)
+    cm = confusion_matrix(Y_train, Y_pred)
+    
+    # Plot confusion matrix
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Lost', 'Won'])
+    disp.plot()
+    plt.title('Confusion Matrix for Best Model (Training Data)')
+    plt.show()
     
     # Return the best model found
     return grid_search.best_estimator_

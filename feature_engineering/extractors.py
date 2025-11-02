@@ -123,7 +123,7 @@ def avg_effectiveness_1_1(data: list[dict], difference=False, include_status_mov
     return pd.DataFrame(final)
 
 # Extended version of avg_effectiveness with turn segmentation
-def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns: bool = False, test: bool = False) -> pd.DataFrame:
+def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns: bool = True, test: bool = False) -> pd.DataFrame:
     """ Given the database, dict with pokemon name:list of types 
     calculate the average effectiveness of all moves used by P1 and P2 in each battle.
     
@@ -257,139 +257,321 @@ def avg_effectiveness2(data: list[dict], difference: bool = False, divide_turns:
     return pd.DataFrame(final)
 
 
-def category_impact_score(data: list[dict], difference=False, test=False):
+def category_impact_score(data: list[dict], difference=False, divide_turns=True, test=False):
     """Given the database, calculate the average category impact score of all moves used by P1 and P2 throughout the turns.
        Category impact score is defined as: base_atk/base_def for Physical moves and base_spa/base_spd for Special moves.
+       
+       Args:
+            data: List of battle dictionaries
+            difference: If True, returns the difference between P1 and P2 scores
+            divide_turns: If True, computes separate averages for first 10, middle 10, and last 10 turns
+            test: If True, excludes player_won from output
     """
+    
+    TURN_SEGMENTS = {
+        'first_10': (0, 10),
+        'middle_10': (10, 20),
+        'last_10': (-10, None)  # Use slicing logic: last 10 turns
+    }
 
     dict_base_stats = get_dict_base_stats(data)
     final = []
     for battle in data:
-        p1_score = 0
-        p2_score = 0
-        total_turns = 0
-        for turn in battle['battle_timeline']:
-
-            p1_pokemon_state= turn.get('p1_pokemon_state', {}) # take the p1_pokemon_state dict
-            p2_pokemon_state= turn.get('p2_pokemon_state', {})
-
-            name1 = p1_pokemon_state.get('name') # take the name of the pokemon inside p1_pokemon_state dict
-            name2 = p2_pokemon_state.get('name')
-
-            p1_move_details = turn.get('p1_move_details', {})
-            p2_move_details = turn.get('p2_move_details', {})
-
-            if p1_move_details:
-                p1_category = p1_move_details.get('category').upper()
-                if p1_category == 'PHYSICAL':
-                    p1_score += dict_base_stats[name1][0] / dict_base_stats[name2][1]  # base_atk / base_def
-                elif p1_category == 'SPECIAL':
-                    p1_score += dict_base_stats[name1][2] / dict_base_stats[name2][3]  # base_spa / base_spd
-                elif p1_category == 'STATUS':
-                    p1_score += 1 # neutral impact for status moves
-
-
-            if p2_move_details:
-                p2_category = p2_move_details.get('category').upper()
-                if p2_category == 'PHYSICAL':
-                    p2_score += dict_base_stats[name2][0] / dict_base_stats[name1][1]  # base_atk / base_def
-                elif p2_category == 'SPECIAL':
-                    p2_score += dict_base_stats[name2][2] / dict_base_stats[name1][3]  # base_spa / base_spd
-                elif p2_category == 'STATUS':
-                    p2_score += 1 # neutral impact for status moves
-             
-            total_turns += 1
-
-        cat_impact_p1 = p1_score / total_turns 
-        cat_impact_p2 = p2_score / total_turns
-
-        result = {'battle_id': battle['battle_id']}
-
-        if difference:
-            result['cat_impact_diff'] = cat_impact_p1 - cat_impact_p2
-        else: 
-            result['p1_cat_impact_score'] = cat_impact_p1
-            result['p2_cat_impact_score'] = cat_impact_p2
-        
-        if not test:
-            result['player_won'] = battle['player_won']
+        if not divide_turns:
+            p1_score = 0
+            p2_score = 0
+            total_turns = 0
             
-        final.append(result)
+            for turn in battle['battle_timeline']:
+                p1_pokemon_state= turn.get('p1_pokemon_state', {}) # take the p1_pokemon_state dict
+                p2_pokemon_state= turn.get('p2_pokemon_state', {})
+
+                name1 = p1_pokemon_state.get('name') # take the name of the pokemon inside p1_pokemon_state dict
+                name2 = p2_pokemon_state.get('name')
+
+                p1_move_details = turn.get('p1_move_details', {})
+                p2_move_details = turn.get('p2_move_details', {})
+
+                # Check if names exist in the dictionary before proceeding
+                if name1 in dict_base_stats and name2 in dict_base_stats:
+                    if p1_move_details:
+                        p1_category = p1_move_details.get('category', '').upper()
+                        if p1_category == 'PHYSICAL':
+                            p1_atk = dict_base_stats[name1][0]
+                            p2_def = dict_base_stats[name2][1]
+                            p1_score += p1_atk / (p2_def if p2_def != 0 else 1)  # base_atk / base_def
+                        elif p1_category == 'SPECIAL':
+                            p1_spa = dict_base_stats[name1][2]
+                            p2_spd = dict_base_stats[name2][3]
+                            p1_score += p1_spa / (p2_spd if p2_spd != 0 else 1)  # base_spa / base_spd
+                        elif p1_category == 'STATUS':
+                            p1_score += 1 # neutral impact for status moves
+
+
+                    if p2_move_details:
+                        p2_category = p2_move_details.get('category', '').upper()
+                        if p2_category == 'PHYSICAL':
+                            p2_atk = dict_base_stats[name2][0]
+                            p1_def = dict_base_stats[name1][1]
+                            p2_score += p2_atk / (p1_def if p1_def != 0 else 1)  # base_atk / base_def
+                        elif p2_category == 'SPECIAL':
+                            p2_spa = dict_base_stats[name2][2]
+                            p1_spd = dict_base_stats[name1][3]
+                            p2_score += p2_spa / (p1_spd if p1_spd != 0 else 1)  # base_spa / base_spd
+                        elif p2_category == 'STATUS':
+                            p2_score += 1 # neutral impact for status moves
+             
+                total_turns += 1
+
+            cat_impact_p1 = p1_score / total_turns if total_turns > 0 else 0.0
+            cat_impact_p2 = p2_score / total_turns if total_turns > 0 else 0.0
+
+            result = {'battle_id': battle['battle_id']}
+
+            if difference:
+                result['cat_impact_diff'] = cat_impact_p1 - cat_impact_p2
+            else: 
+                result['p1_cat_impact_score'] = cat_impact_p1
+                result['p2_cat_impact_score'] = cat_impact_p2
+            
+            if not test:
+                result['player_won'] = battle['player_won']
+                
+            final.append(result)
+        
+        else:  # divide_turns=True
+            battle_data = {'battle_id': battle['battle_id']}
+            timeline = battle['battle_timeline']
+            
+            for segment_name, (start, end) in TURN_SEGMENTS.items():
+                # Determine the slice of the timeline for the current segment
+                if start is not None and end is None and start < 0:
+                    segment_timeline = timeline[start:]  # Last N turns
+                elif start is not None and end is not None:
+                    segment_timeline = timeline[start:end]  # Middle section
+                else:
+                    segment_timeline = []  # Corrected from 'timeline'
+
+                # Initialize segment-specific counters
+                p1_score = 0
+                p2_score = 0
+                segment_turns = len(segment_timeline)
+
+                # Process the segment
+                for turn in segment_timeline:
+                    p1_pokemon_state = turn.get('p1_pokemon_state', {})
+                    p2_pokemon_state = turn.get('p2_pokemon_state', {})
+                    name1 = p1_pokemon_state.get('name')
+                    name2 = p2_pokemon_state.get('name')
+
+                    p1_move_details = turn.get('p1_move_details', {})
+                    p2_move_details = turn.get('p2_move_details', {})
+                    
+                    # Check if names exist in the dictionary before proceeding
+                    if name1 in dict_base_stats and name2 in dict_base_stats:
+                        if p1_move_details:
+                            p1_category = p1_move_details.get('category', '').upper()
+                            if p1_category == 'PHYSICAL':
+                                p1_atk = dict_base_stats[name1][0]
+                                p2_def = dict_base_stats[name2][1]
+                                p1_score += p1_atk / (p2_def if p2_def != 0 else 1)
+                            elif p1_category == 'SPECIAL':
+                                p1_spa = dict_base_stats[name1][2]
+                                p2_spd = dict_base_stats[name2][3]
+                                p1_score += p1_spa / (p2_spd if p2_spd != 0 else 1)
+                            elif p1_category == 'STATUS':
+                                p1_score += 1
+
+                        if p2_move_details:
+                            p2_category = p2_move_details.get('category', '').upper()
+                            if p2_category == 'PHYSICAL':
+                                p2_atk = dict_base_stats[name2][0]
+                                p1_def = dict_base_stats[name1][1]
+                                p2_score += p2_atk / (p1_def if p1_def != 0 else 1)
+                            elif p2_category == 'SPECIAL':
+                                p2_spa = dict_base_stats[name2][2]
+                                p1_spd = dict_base_stats[name1][3]
+                                p2_score += p2_spa / (p1_spd if p1_spd != 0 else 1)
+                            elif p2_category == 'STATUS':
+                                p2_score += 1
+
+                # Calculate segment averages
+                if segment_turns > 0:
+                    cat_impact_p1 = p1_score / segment_turns
+                    cat_impact_p2 = p2_score / segment_turns
+                else:
+                    cat_impact_p1 = 0.0
+                    cat_impact_p2 = 0.0
+
+                if difference:
+                    battle_data[f'{segment_name}_cat_impact_diff'] = cat_impact_p1 - cat_impact_p2
+                else:
+                    battle_data[f'{segment_name}_p1_cat_impact'] = cat_impact_p1
+                    battle_data[f'{segment_name}_p2_cat_impact'] = cat_impact_p2
+
+            if not test:
+                battle_data['player_won'] = battle['player_won']
+
+            final.append(battle_data)
+    
     return pd.DataFrame(final)
 
 
-def avg_stab_multiplier(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+def avg_stab_multiplier(data: list[dict], difference: bool = False, divide_turns: bool = True, test: bool = False) -> pd.DataFrame:
     """
     Calculates the average STAB multiplier (1.5 for STAB, 1.0 for non-STAB/Status) 
     for all moves used by P1 and P2 throughout the battle.
     
-    :param data: List of battle dictionaries.
-    :param difference: If True, returns the difference (P1 - P2) in average STAB multipliers.
-    :return: A pandas DataFrame with the calculated average STAB multiplier data.
+    Args:
+        data: List of battle dictionaries
+        difference: If True, returns the difference (P1 - P2) in average STAB multipliers
+        divide_turns: If True, computes separate averages for first 10, middle 10, and last 10 turns
+        test: If True, excludes player_won from output
+        
+    Returns:
+        A pandas DataFrame with the calculated average STAB multiplier data.
     """
+    TURN_SEGMENTS = {
+        'first_10': (0, 10),
+        'middle_10': (10, 20),
+        'last_10': (-10, None)  # Use slicing logic: last 10 turns
+    }
+    
     # Helper dictionary to quickly get the attacking Pokémon's type(s)
     pokemon_att_types = get_dict_attacker_types(data)
     
     final = []
     
     for battle in data:
-        total_turns = 0
-        total_stab_p1 = 0.0
-        total_stab_p2 = 0.0
-        
-        for turn in battle['battle_timeline']:
-            p1_pokemon_state = turn.get('p1_pokemon_state', {})
-            p2_pokemon_state = turn.get('p2_pokemon_state', {})
-
-            name1 = p1_pokemon_state.get('name')
-            name2 = p2_pokemon_state.get('name')
-
-            # Get the types of the Pokémon currently active
-            att_types_p1 = pokemon_att_types.get(name1, [])
-            att_types_p2 = pokemon_att_types.get(name2, [])
-
-            p1_move_details = turn.get('p1_move_details', {})
-            p2_move_details = turn.get('p2_move_details', {})
+        if not divide_turns:
+            total_turns = 0
+            total_stab_p1 = 0.0
+            total_stab_p2 = 0.0
             
-            # --- P1 STAB Calculation ---
-            if p1_move_details:
-                move_type_1 = p1_move_details.get('type', '').lower()
+            for turn in battle['battle_timeline']:
+                p1_pokemon_state = turn.get('p1_pokemon_state', {})
+                p2_pokemon_state = turn.get('p2_pokemon_state', {})
+
+                name1 = p1_pokemon_state.get('name')
+                name2 = p2_pokemon_state.get('name')
+
+                # Get the types of the Pokémon currently active
+                att_types_p1 = pokemon_att_types.get(name1, [])
+                att_types_p2 = pokemon_att_types.get(name2, [])
+
+                p1_move_details = turn.get('p1_move_details', {})
+                p2_move_details = turn.get('p2_move_details', {})
+            
+                # --- P1 STAB Calculation ---
+                if p1_move_details:
+                    move_type_1 = p1_move_details.get('type', '').lower()
                 
-                # Check if the move's type matches any of the attacker's types (STAB)
-                if move_type_1 in att_types_p1:
-                    total_stab_p1 += 1.5
+                    # Check if the move's type matches any of the attacker's types (STAB)
+                    if move_type_1 in att_types_p1:
+                        total_stab_p1 += 1.5
+                    else:
+                        total_stab_p1 += 1.0 # Non-STAB moves (including Status moves) get 1.0
                 else:
-                    total_stab_p1 += 1.0 # Non-STAB moves (including Status moves) get 1.0
+                    # If no move, counts as 1.0
+                    total_stab_p1 += 1.0
             
-            # --- P2 STAB Calculation ---
-            if p2_move_details:
-                move_type_2 = p2_move_details.get('type', '').lower()
+                # --- P2 STAB Calculation ---
+                if p2_move_details:
+                    move_type_2 = p2_move_details.get('type', '').lower()
                 
-                # Check if the move's type matches any of the attacker's types (STAB)
-                if move_type_2 in att_types_p2:
-                    total_stab_p2 += 1.5
+                    # Check if the move's type matches any of the attacker's types (STAB)
+                    if move_type_2 in att_types_p2:
+                        total_stab_p2 += 1.5
+                    else:
+                        total_stab_p2 += 1.0 # Non-STAB moves (including Status moves) get 1.0
                 else:
-                    total_stab_p2 += 1.0 # Non-STAB moves (including Status moves) get 1.0
+                    # If no move, counts as 1.0
+                    total_stab_p2 += 1.0
 
-            total_turns += 1
+                total_turns += 1
             
-        # Handle division by zero
-        
-        avg_stab_p1 = total_stab_p1 / total_turns
-        avg_stab_p2 = total_stab_p2 / total_turns
+            # Handle division by zero
+            avg_stab_p1 = total_stab_p1 / total_turns if total_turns > 0 else 0.0
+            avg_stab_p2 = total_stab_p2 / total_turns if total_turns > 0 else 0.0
 
-        result = {'battle_id': battle['battle_id']}
+            result = {'battle_id': battle['battle_id']}
+                
+            if difference:
+                result['avg_stab_diff'] = avg_stab_p1 - avg_stab_p2
+            else: 
+                result['avg_stab_p1'] = avg_stab_p1
+                result['avg_stab_p2'] = avg_stab_p2
             
-        if difference:
-            result['avg_stab_diff'] = avg_stab_p1 - avg_stab_p2
-        else: 
-            result['avg_stab_p1'] = avg_stab_p1
-            result['avg_stab_p2'] = avg_stab_p2
+            if not test:
+                result['player_won'] = battle['player_won']
+                
+            final.append(result)
         
-        if not test:
-            result['player_won'] = battle['player_won']
+        else:  # divide_turns=True
+            battle_data = {'battle_id': battle['battle_id']}
+            timeline = battle['battle_timeline']
             
-        final.append(result)
+            for segment_name, (start, end) in TURN_SEGMENTS.items():
+                # Determine the slice of the timeline for the current segment
+                if start is not None and end is None and start < 0:
+                    segment_timeline = timeline[start:]  # Last N turns
+                elif start is not None and end is not None:
+                    segment_timeline = timeline[start:end]  # Middle section
+                else:
+                    segment_timeline = [] # Corrected from 'timeline'
+
+                # Initialize segment-specific counters
+                segment_turns = len(segment_timeline)
+                segment_stab_p1 = 0.0
+                segment_stab_p2 = 0.0
+
+                # Process the segment
+                for turn in segment_timeline:
+                    p1_pokemon_state = turn.get('p1_pokemon_state', {})
+                    p2_pokemon_state = turn.get('p2_pokemon_state', {})
+
+                    name1 = p1_pokemon_state.get('name')
+                    name2 = p2_pokemon_state.get('name')
+
+                    # Get the types of the Pokémon currently active
+                    att_types_p1 = pokemon_att_types.get(name1, [])
+                    att_types_p2 = pokemon_att_types.get(name2, [])
+
+                    p1_move_details = turn.get('p1_move_details', {})
+                    p2_move_details = turn.get('p2_move_details', {})
+
+                    # P1 STAB calculation
+                    if p1_move_details:
+                        move_type = p1_move_details.get('type', '').lower()
+                        segment_stab_p1 += 1.5 if move_type in att_types_p1 else 1.0
+                    else:
+                        segment_stab_p1 += 1.0
+
+                    # P2 STAB calculation
+                    if p2_move_details:
+                        move_type = p2_move_details.get('type', '').lower()
+                        segment_stab_p2 += 1.5 if move_type in att_types_p2 else 1.0
+                    else:
+                        segment_stab_p2 += 1.0
+
+                # Calculate segment averages
+                if segment_turns > 0:
+                    avg_stab_p1 = segment_stab_p1 / segment_turns
+                    avg_stab_p2 = segment_stab_p2 / segment_turns
+                else:
+                    avg_stab_p1 = 0.0
+                    avg_stab_p2 = 0.0
+
+                if difference:
+                    battle_data[f'{segment_name}_stab_diff'] = avg_stab_p1 - avg_stab_p2
+                else:
+                    battle_data[f'{segment_name}_stab_p1'] = avg_stab_p1
+                    battle_data[f'{segment_name}_stab_p2'] = avg_stab_p2
+
+            if not test:
+                battle_data['player_won'] = battle['player_won']
+
+            final.append(battle_data)
             
     return pd.DataFrame(final)
 
@@ -436,71 +618,141 @@ def avg_final_HP_pct(data: list[dict], difference: bool = False, test: bool = Fa
     return pd.DataFrame(final)
 
 
-def avg_stat_diff_per_turn(data: list[dict], stats: list[str], test: bool = False) -> pd.DataFrame:
+def avg_stat_diff_per_turn(data: list[dict], stats: list[str], divide_turns: bool = True, test: bool = False) -> pd.DataFrame:
     '''
     Calculate the average base stat difference (P1 - P2) per turn for multiple stats.
     
     Args:
         data: List of battle dictionaries
         stats: List of stat names to calculate ('hp', 'atk', 'def', 'spa', 'spd', 'spe')
+        divide_turns: If True, computes separate averages for first 10, middle 10, and last 10 turns
+        test: If True, excludes player_won from output
         
     Returns:
         DataFrame with battle_id, average stat differences per turn for each stat, and player_won
     '''
+    TURN_SEGMENTS = {
+        'first_10': (0, 10),
+        'middle_10': (10, 20),
+        'last_10': (-10, None)  # Use slicing logic: last 10 turns
+    }
+    
     # Get base stats dictionary for all pokemon
     pokemon_stats = get_dict_base_stats1(data)
     
     final = []
     for battle in data:
-        # Initialize totals for each stat
-        total_stat_diffs = {stat: 0.0 for stat in stats}
-        total_turns = 0
-        
-        for turn in battle['battle_timeline']:
-            p1_pokemon_state = turn.get('p1_pokemon_state', {})
-            p2_pokemon_state = turn.get('p2_pokemon_state', {})
+        if not divide_turns:
+            # Initialize totals for each stat
+            total_stat_diffs = {stat: 0.0 for stat in stats}
+            total_turns = 0
+            
+            for turn in battle['battle_timeline']:
+                p1_pokemon_state = turn.get('p1_pokemon_state', {})
+                p2_pokemon_state = turn.get('p2_pokemon_state', {})
 
-            name1 = p1_pokemon_state.get('name')
-            name2 = p2_pokemon_state.get('name')
+                name1 = p1_pokemon_state.get('name')
+                name2 = p2_pokemon_state.get('name')
             
-            # Get base stats for both pokemon
-            stats_p1 = pokemon_stats.get(name1, {})
-            stats_p2 = pokemon_stats.get(name2, {})
-            
-            # Calculate differences for each requested stat
-            for stat in stats:
-                if stat == 'hp':
-                    # For HP, multiply by HP percentage
-                    hp_pct_1 = p1_pokemon_state.get('hp_pct', 0)
-                    hp_pct_2 = p2_pokemon_state.get('hp_pct', 0)
-                    base_hp_1 = stats_p1.get('base_hp', 0)
-                    base_hp_2 = stats_p2.get('base_hp', 0)
-                    stat_1 = base_hp_1 * hp_pct_1
-                    stat_2 = base_hp_2 * hp_pct_2
-                else:
-                    # For other stats, use base values directly
-                    stat_1 = stats_p1.get(f'base_{stat}', 0)
-                    stat_2 = stats_p2.get(f'base_{stat}', 0)
+                # Get base stats for both pokemon
+                stats_p1 = pokemon_stats.get(name1, {})
+                stats_p2 = pokemon_stats.get(name2, {})
                 
-                # Calculate stat difference for this turn
-                stat_diff = stat_1 - stat_2
-                total_stat_diffs[stat] += stat_diff
+                # Calculate differences for each requested stat
+                for stat in stats:
+                    if stat == 'hp':
+                        # For HP, multiply by HP percentage
+                        hp_pct_1 = p1_pokemon_state.get('hp_pct', 0)
+                        hp_pct_2 = p2_pokemon_state.get('hp_pct', 0)
+                        base_hp_1 = stats_p1.get('base_hp', 0)
+                        base_hp_2 = stats_p2.get('base_hp', 0)
+                        stat_1 = base_hp_1 * hp_pct_1
+                        stat_2 = base_hp_2 * hp_pct_2
+                    else:
+                        # For other stats, use base values directly
+                        stat_1 = stats_p1.get(f'base_{stat}', 0)
+                        stat_2 = stats_p2.get(f'base_{stat}', 0)
+                    
+                    # Calculate stat difference for this turn
+                    stat_diff = stat_1 - stat_2
+                    total_stat_diffs[stat] += stat_diff
+                
+                total_turns += 1
             
-            total_turns += 1
+            # Calculate average stat differences per turn
+            battle_result = {
+                'battle_id': battle['battle_id']
+            }
+            
+            for stat in stats:
+                avg_stat_diff = total_stat_diffs[stat] / total_turns if total_turns > 0 else 0.0
+                battle_result[f'avg_{stat}_diff_per_turn'] = avg_stat_diff
+            
+            if not test:
+                battle_result['player_won'] = battle['player_won']
+            
+            final.append(battle_result)
         
-        # Calculate average stat differences per turn
-        battle_result = {
-            'battle_id': battle['battle_id']
-        }
-        
-        for stat in stats:
-            avg_stat_diff = total_stat_diffs[stat] / total_turns
-            battle_result[f'avg_{stat}_diff_per_turn'] = avg_stat_diff
-        
-        if not test:
-            battle_result['player_won'] = battle['player_won']
-        
-        final.append(battle_result)
+        else:  # divide_turns=True
+            battle_data = {'battle_id': battle['battle_id']}
+            timeline = battle['battle_timeline']
+            
+            for segment_name, (start, end) in TURN_SEGMENTS.items():
+                # Determine the slice of the timeline for the current segment
+                if start is not None and end is None and start < 0:
+                    segment_timeline = timeline[start:]  # Last N turns
+                elif start is not None and end is not None:
+                    segment_timeline = timeline[start:end]  # Middle section
+                else:
+                    segment_timeline = [] # Corrected from 'timeline'
+
+                # Initialize segment-specific counters
+                segment_stat_diffs = {stat: 0.0 for stat in stats}
+                segment_turns = len(segment_timeline)
+
+                # Process the segment
+                for turn in segment_timeline:
+                    p1_pokemon_state = turn.get('p1_pokemon_state', {})
+                    p2_pokemon_state = turn.get('p2_pokemon_state', {})
+
+                    name1 = p1_pokemon_state.get('name')
+                    name2 = p2_pokemon_state.get('name')
+                    
+                    # Get base stats for both pokemon
+                    stats_p1 = pokemon_stats.get(name1, {})
+                    stats_p2 = pokemon_stats.get(name2, {})
+                    
+                    # Calculate differences for each requested stat
+                    for stat in stats:
+                        # Corrected logic for HP (was missing in original 'else' block)
+                        if stat == 'hp':
+                            hp_pct_1 = p1_pokemon_state.get('hp_pct', 0)
+                            hp_pct_2 = p2_pokemon_state.get('hp_pct', 0)
+                            base_hp_1 = stats_p1.get('base_hp', 0)
+                            base_hp_2 = stats_p2.get('base_hp', 0)
+                            stat_1 = base_hp_1 * hp_pct_1
+                            stat_2 = base_hp_2 * hp_pct_2
+                        else:
+                            stat_1 = stats_p1.get(f'base_{stat}', 0)
+                            stat_2 = stats_p2.get(f'base_{stat}', 0)
+                        
+                        segment_stat_diffs[stat] += stat_1 - stat_2
+
+                # Calculate segment averages
+                if segment_turns > 0:
+                    for stat in stats:
+                        avg_stat_diff = segment_stat_diffs[stat] / segment_turns
+                        battle_data[f'{segment_name}_{stat}_diff'] = avg_stat_diff
+                else:
+                    # Add default values if segment is empty
+                    for stat in stats:
+                        battle_data[f'{segment_name}_{stat}_diff'] = 0.0
+
+
+            if not test:
+                battle_data['player_won'] = battle['player_won']
+
+            final.append(battle_data)
     
     return pd.DataFrame(final)
 
@@ -564,7 +816,7 @@ def avg_boost_diff_per_turn(data: list[dict], difference: bool = False, test: bo
     return pd.DataFrame(final)
 
 
-def accuracy_basepower_avg(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+def accuracy_basepower_avg(data: list[dict], difference: bool = False, divide_turns: bool = True, test: bool = False) -> pd.DataFrame:
     '''
     Calculate the average accuracy and base power of moves used by P1 and P2 throughout the battle.
     For turns where move_details is null (no move was made), accuracy and base_power are treated as 0.
@@ -572,84 +824,176 @@ def accuracy_basepower_avg(data: list[dict], difference: bool = False, test: boo
     Args:
         data: List of battle dictionaries
         difference: If True, returns the difference (P1 - P2) in average accuracy, base power and priority
+        divide_turns: If True, computes separate averages for first 10, middle 10, and last 10 turns
         test: If True, excludes the "player_won" column from the output.
 
     Returns:
         DataFrame with battle_id, average accuracy and base power for P1 and P2, and optionally player_won
     '''
+    TURN_SEGMENTS = {
+        'first_10': (0, 10),
+        'middle_10': (10, 20),
+        'last_10': (-10, None)  # Use slicing logic: last 10 turns
+    }
+    
     final = []
     for battle in data:
-        total_turns = 0
-        total_accuracy_p1 = 0.0
-        total_accuracy_p2 = 0.0
-        total_basepower_p1 = 0.0
-        total_basepower_p2 = 0.0
-        total_priority_p1 = 0.0
-        total_priority_p2 = 0.0
+        if not divide_turns:
+            total_turns = 0
+            total_accuracy_p1 = 0.0
+            total_accuracy_p2 = 0.0
+            total_basepower_p1 = 0.0
+            total_basepower_p2 = 0.0
+            total_priority_p1 = 0.0
+            total_priority_p2 = 0.0
 
-        for turn in battle['battle_timeline']:
-            p1_move_details = turn.get('p1_move_details', {})
-            p2_move_details = turn.get('p2_move_details', {})
+            for turn in battle['battle_timeline']:
+                p1_move_details = turn.get('p1_move_details', {})
+                p2_move_details = turn.get('p2_move_details', {})
 
-            # --- P1 Calculation ---
-            if p1_move_details:
-                accuracy_1 = p1_move_details.get('accuracy', 100)  # default accuracy is 100 if not specified
-                base_power_1 = p1_move_details.get('base_power', 0)  # default base power is 0 if not specified
-                priority_1 = p1_move_details.get('priority', 0)
+                # --- P1 Calculation ---
+                if p1_move_details:
+                    # Use .get(key, default) to handle missing keys
+                    accuracy_1 = p1_move_details.get('accuracy', 100)  # default accuracy is 100 if not specified
+                    base_power_1 = p1_move_details.get('base_power', 0)  # default base power is 0 if not specified
+                    priority_1 = p1_move_details.get('priority', 0)
 
-                total_accuracy_p1 += accuracy_1
-                total_basepower_p1 += base_power_1
-                total_priority_p1 += priority_1
+                    total_accuracy_p1 += accuracy_1
+                    total_basepower_p1 += base_power_1
+                    total_priority_p1 += priority_1
+                else:
+                    # No move, add 0
+                    total_accuracy_p1 += 0
+                    total_basepower_p1 += 0
+                    total_priority_p1 += 0
+
+                # --- P2 Calculation ---
+                if p2_move_details:
+                    accuracy_2 = p2_move_details.get('accuracy', 100)
+                    base_power_2 = p2_move_details.get('base_power', 0)
+                    priority_2 = p2_move_details.get('priority', 0)
+
+                    total_accuracy_p2 += accuracy_2
+                    total_basepower_p2 += base_power_2
+                    total_priority_p2 += priority_2
+                else:
+                    # No move, add 0
+                    total_accuracy_p2 += 0
+                    total_basepower_p2 += 0
+                    total_priority_p2 += 0
+
+                total_turns += 1
+
+            # Calculate averages
+            avg_accuracy_p1 = total_accuracy_p1 / total_turns if total_turns > 0 else 0.0
+            avg_accuracy_p2 = total_accuracy_p2 / total_turns if total_turns > 0 else 0.0
+            avg_basepower_p1 = total_basepower_p1 / total_turns if total_turns > 0 else 0.0
+            avg_basepower_p2 = total_basepower_p2 / total_turns if total_turns > 0 else 0.0
+            avg_priority_p1 = total_priority_p1 / total_turns if total_turns > 0 else 0.0
+            avg_priority_p2 = total_priority_p2 / total_turns if total_turns > 0 else 0.0
+
+            result = {
+                'battle_id': battle['battle_id']
+            }
+
+            if difference:
+                result['avg_accuracy_diff'] = avg_accuracy_p1 - avg_accuracy_p2
+                #result['avg_basepower_diff'] = avg_basepower_p1 - avg_basepower_p2
+                result['avg_priority_diff'] = avg_priority_p1 - avg_priority_p2
+
             else:
-                total_accuracy_p1 += 0
-                total_basepower_p1 += 0
-                total_priority_p1 += 0
+                result['avg_accuracy_p1'] = avg_accuracy_p1
+                result['avg_accuracy_p2'] = avg_accuracy_p2
+                #result['avg_basepower_p1'] = avg_basepower_p1
+                #result['avg_basepower_p2'] = avg_basepower_p2
+                result['avg_priority_p1'] = avg_priority_p1 
+                result['avg_priority_p2'] = avg_priority_p2 
 
-            # --- P2 Calculation ---
-            if p2_move_details:
-                accuracy_2 = p2_move_details.get('accuracy', 100)
-                base_power_2 = p2_move_details.get('base_power', 0)
-                priority_2 = p2_move_details.get('priority', 0)
+            if not test:
+                result['player_won'] = battle['player_won']
 
-                total_accuracy_p2 += accuracy_2
-                total_basepower_p2 += base_power_2
-                total_priority_p2 += priority_2
-            else:
-                total_accuracy_p2 += 0
-                total_basepower_p2 += 0
-                total_priority_p2 += 0
+            final.append(result)
+            
+        else:  # divide_turns=True
+            battle_data = {'battle_id': battle['battle_id']}
+            timeline = battle['battle_timeline']
+            
+            for segment_name, (start, end) in TURN_SEGMENTS.items():
+                # Determine the slice of the timeline for the current segment
+                if start is not None and end is None and start < 0:
+                    segment_timeline = timeline[start:]  # Last N turns
+                elif start is not None and end is not None:
+                    segment_timeline = timeline[start:end]  # Middle section
+                else:
+                    segment_timeline = [] # Corrected from 'timeline'
 
-            total_turns += 1
+                # Initialize segment-specific counters
+                segment_accuracy_p1 = 0.0
+                segment_accuracy_p2 = 0.0
+                segment_basepower_p1 = 0.0
+                segment_basepower_p2 = 0.0
+                segment_priority_p1 = 0.0
+                segment_priority_p2 = 0.0
+                segment_turns = len(segment_timeline)
 
-        # Calculate averages
-        avg_accuracy_p1 = total_accuracy_p1 / total_turns if total_turns > 0 else 0.0
-        avg_accuracy_p2 = total_accuracy_p2 / total_turns if total_turns > 0 else 0.0
-        avg_basepower_p1 = total_basepower_p1 / total_turns if total_turns > 0 else 0.0
-        avg_basepower_p2 = total_basepower_p2 / total_turns if total_turns > 0 else 0.0
-        avg_priority_p1 = total_priority_p1 / total_turns if total_turns > 0 else 0.0
-        avg_priority_p2 = total_priority_p2 / total_turns if total_turns > 0 else 0.0
+                # Process the segment
+                for turn in segment_timeline:
+                    p1_move_details = turn.get('p1_move_details', {})
+                    p2_move_details = turn.get('p2_move_details', {})
 
-        result = {
-            'battle_id': battle['battle_id']
-        }
+                    # P1 move details
+                    if p1_move_details:
+                        segment_accuracy_p1 += p1_move_details.get('accuracy', 100) # Use default 100
+                        segment_basepower_p1 += p1_move_details.get('base_power', 0)
+                        segment_priority_p1 += p1_move_details.get('priority', 0)
+                    else:
+                        segment_accuracy_p1 += 0
+                        segment_basepower_p1 += 0
+                        segment_priority_p1 += 0
 
-        if difference:
-            result['avg_accuracy_diff'] = avg_accuracy_p1 - avg_accuracy_p2
-            result['avg_basepower_diff'] = avg_basepower_p1 - avg_basepower_p2
-            result['avg_priority_diff'] = avg_priority_p1 - avg_priority_p2
+                    # P2 move details
+                    if p2_move_details:
+                        segment_accuracy_p2 += p2_move_details.get('accuracy', 100) # Use default 100
+                        segment_basepower_p2 += p2_move_details.get('base_power', 0)
+                        segment_priority_p2 += p2_move_details.get('priority', 0)
+                    else:
+                        segment_accuracy_p2 += 0
+                        segment_basepower_p2 += 0
+                        segment_priority_p2 += 0
 
-        else:
-            result['avg_accuracy_p1'] = avg_accuracy_p1
-            result['avg_accuracy_p2'] = avg_accuracy_p2
-            result['avg_basepower_p1'] = avg_basepower_p1
-            result['avg_basepower_p2'] = avg_basepower_p2
-            result['avg_priority_p1'] = avg_priority_p1 
-            result['avg_priority_p2'] = avg_priority_p2 
+                # Calculate segment averages
+                if segment_turns > 0:
+                    avg_accuracy_p1 = segment_accuracy_p1 / segment_turns
+                    avg_accuracy_p2 = segment_accuracy_p2 / segment_turns
+                    avg_basepower_p1 = segment_basepower_p1 / segment_turns
+                    avg_basepower_p2 = segment_basepower_p2 / segment_turns
+                    avg_priority_p1 = segment_priority_p1 / segment_turns
+                    avg_priority_p2 = segment_priority_p2 / segment_turns
+                else:
+                    avg_accuracy_p1 = 0.0
+                    avg_accuracy_p2 = 0.0
+                    avg_basepower_p1 = 0.0
+                    avg_basepower_p2 = 0.0
+                    avg_priority_p1 = 0.0
+                    avg_priority_p2 = 0.0
 
-        if not test:
-            result['player_won'] = battle['player_won']
 
-        final.append(result)
+                if difference:
+                    battle_data[f'{segment_name}_accuracy_diff'] = avg_accuracy_p1 - avg_accuracy_p2
+                    #battle_data[f'{segment_name}_basepower_diff'] = avg_basepower_p1 - avg_basepower_p2
+                    battle_data[f'{segment_name}_priority_diff'] = avg_priority_p1 - avg_priority_p2
+                else:
+                    battle_data[f'{segment_name}_accuracy_p1'] = avg_accuracy_p1
+                    battle_data[f'{segment_name}_accuracy_p2'] = avg_accuracy_p2
+                    #battle_data[f'{segment_name}_basepower_p1'] = avg_basepower_p1
+                    #battle_data[f'{segment_name}_basepower_p2'] = avg_basepower_p2
+                    battle_data[f'{segment_name}_priority_p1'] = avg_priority_p1
+                    battle_data[f'{segment_name}_priority_p2'] = avg_priority_p2
+
+            if not test:
+                battle_data['player_won'] = battle['player_won']
+
+            final.append(battle_data)
 
     return pd.DataFrame(final)
 
@@ -729,7 +1073,7 @@ def granular_turn_counts(data: list[dict], difference: bool = False, test: bool 
     
     return pd.DataFrame(final)
 
-    
+
 def avg_team_vs_lead_stats(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
     """
     Calculates the average base stats for P1's team and compares them against
@@ -1281,4 +1625,131 @@ def pokemon_encoding(data: list[dict], one_hot: bool = False, test: bool = False
         final.append(row)
 
     return pd.DataFrame(final)
+
+
+def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = False) -> pd.DataFrame:
+    """
+    Calculates the average approximate damage dealt by P1 and P2 per turn
+    over the entire battle, based on the Gen 1 damage formula.
     
+    Formula: ( ( (2*Lvl+10)/250 * Atk/Def * Base) + 2 ) * Modifier
+    
+    Approximations made:
+    - Level (Lvl) is 100. Constant = (2*100+10)/250 = 0.84
+    - Atk/Def stats are Base Stats (not boosted).
+    - Modifier = STAB * Type * random_avg
+    - STAB is 1.5 if applicable, 1.0 otherwise.
+    - Type is the type effectiveness multiplier.
+    - random_avg is (0.85 + 1.0) / 2 = 0.925
+    - Critical hits and 'other' modifiers are ignored (treated as 1.0).
+    - Status moves deal 0.0 damage.
+    """
+    
+    # Constants from the damage formula
+    LEVEL_CONSTANT = 0.84  # ( (2 * 100 + 10) / 250 )
+    RANDOM_AVG = 0.925     # Average of [0.85, 1.0]
+
+    # Get helper dictionaries
+    dict_base_stats = get_dict_base_stats(data)
+    pokemon_att_types = get_dict_attacker_types(data)
+    pokemon_def_types = get_dict_def_types(data)
+    
+    final = []
+    
+    for battle in data:
+        total_turns = 0
+        total_approx_damage_p1 = 0.0
+        total_approx_damage_p2 = 0.0
+        
+        for turn in battle['battle_timeline']:
+            p1_pokemon_state = turn.get('p1_pokemon_state', {})
+            p2_pokemon_state = turn.get('p2_pokemon_state', {})
+
+            name1 = p1_pokemon_state.get('name')
+            name2 = p2_pokemon_state.get('name')
+
+            p1_move_details = turn.get('p1_move_details', {})
+            p2_move_details = turn.get('p2_move_details', {})
+            
+            # Check if we have stat data for both Pokemon
+            if name1 in dict_base_stats and name2 in dict_base_stats:
+                stats_p1 = dict_base_stats[name1] # [atk, def, spa, spd]
+                stats_p2 = dict_base_stats[name2]
+                
+                att_types_p1 = pokemon_att_types.get(name1, [])
+                def_types_p1 = pokemon_def_types.get(name1)
+                
+                att_types_p2 = pokemon_att_types.get(name2, [])
+                def_types_p2 = pokemon_def_types.get(name2)
+
+                # --- P1 Damage Calculation ---
+                if p1_move_details:
+                    category_1 = p1_move_details.get('category', '').upper()
+                    base_power_1 = p1_move_details.get('base_power', 0)
+                    move_type_1 = p1_move_details.get('type')
+
+                    if category_1 in ('PHYSICAL', 'SPECIAL') and base_power_1 > 0 and move_type_1 and def_types_p2:
+                        # 1. Get Stat Ratio
+                        if category_1 == 'PHYSICAL':
+                            p1_attack = stats_p1[0] # atk
+                            p2_defense = stats_p2[1] # def
+                            stat_ratio_1 = p1_attack / (p2_defense if p2_defense != 0 else 1)
+                        else: # SPECIAL
+                            p1_attack = stats_p1[2] # spa
+                            p2_defense = stats_p2[3] # spd
+                            stat_ratio_1 = p1_attack / (p2_defense if p2_defense != 0 else 1)
+                        
+                        # 2. Get Modifier
+                        stab_1 = 1.5 if move_type_1.lower() in att_types_p1 else 1.0
+                        type_eff_1 = effectiveness(move_type_1, def_types_p2)
+                        modifier_1 = stab_1 * type_eff_1 * RANDOM_AVG
+                        
+                        # 3. Calculate Damage
+                        damage_1 = ((LEVEL_CONSTANT * stat_ratio_1 * base_power_1) + 2) * modifier_1
+                        total_approx_damage_p1 += damage_1
+
+                # --- P2 Damage Calculation ---
+                if p2_move_details:
+                    category_2 = p2_move_details.get('category', '').upper()
+                    base_power_2 = p2_move_details.get('base_power', 0)
+                    move_type_2 = p2_move_details.get('type')
+                    
+                    if category_2 in ('PHYSICAL', 'SPECIAL') and base_power_2 > 0 and move_type_2 and def_types_p1:
+                        # 1. Get Stat Ratio
+                        if category_2 == 'PHYSICAL':
+                            p2_attack = stats_p2[0] # atk
+                            p1_defense = stats_p1[1] # def
+                            stat_ratio_2 = p2_attack / (p1_defense if p1_defense != 0 else 1)
+                        else: # SPECIAL
+                            p2_attack = stats_p2[2] # spa
+                            p1_defense = stats_p1[3] # spd
+                            stat_ratio_2 = p2_attack / (p1_defense if p1_defense != 0 else 1)
+                        
+                        # 2. Get Modifier
+                        stab_2 = 1.5 if move_type_2.lower() in att_types_p2 else 1.0
+                        type_eff_2 = effectiveness(move_type_2, def_types_p1)
+                        modifier_2 = stab_2 * type_eff_2 * RANDOM_AVG
+                        
+                        # 3. Calculate Damage
+                        damage_2 = ((LEVEL_CONSTANT * stat_ratio_2 * base_power_2) + 2) * modifier_2
+                        total_approx_damage_p2 += damage_2
+            
+            total_turns += 1
+
+        avg_damage_p1 = total_approx_damage_p1 / total_turns if total_turns > 0 else 0.0
+        avg_damage_p2 = total_approx_damage_p2 / total_turns if total_turns > 0 else 0.0
+
+        result = {'battle_id': battle['battle_id']}
+
+        if difference:
+            result['avg_approx_damage_diff'] = avg_damage_p1 - avg_damage_p2
+        else: 
+            result['p1_avg_approx_damage'] = avg_damage_p1
+            result['p2_avg_approx_damage'] = avg_damage_p2
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
+
+    return pd.DataFrame(final)

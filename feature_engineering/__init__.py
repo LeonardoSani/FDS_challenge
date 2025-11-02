@@ -17,7 +17,8 @@ from .extractors import (
     calculate_voluntary_swap_diff,
     hp_advantage_flip_count,
     damage_efficiency_ratio,
-    pokemon_encoding
+    pokemon_encoding,
+    avg_approx_damage
 )
 
 from .utils import (
@@ -54,6 +55,7 @@ __all__ = [
     'hp_advantage_flip_count',
     'damage_efficiency_ratio',
     'pokemon_encoding',
+    'avg_approx_damage',
     
     # Utility Functions
     'get_dict_from_json',

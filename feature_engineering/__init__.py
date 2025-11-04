@@ -15,7 +15,7 @@ from .extractors import (
     faint_count_diff_extractor,
     ratio_category_diff,
     calculate_voluntary_swap_diff,
-    hp_advantage_flip_count,
+    team_hp_advantage_flip_count,
     damage_efficiency_ratio,
     pokemon_encoding,
     avg_approx_damage
@@ -52,7 +52,7 @@ __all__ = [
     'faint_count_diff_extractor',
     'ratio_category_diff',
     'calculate_voluntary_swap_diff',
-    'hp_advantage_flip_count',
+    'team_hp_advantage_flip_count',
     'damage_efficiency_ratio',
     'pokemon_encoding',
     'avg_approx_damage',

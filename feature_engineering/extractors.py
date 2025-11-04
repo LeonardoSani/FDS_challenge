@@ -757,7 +757,7 @@ def avg_stat_diff_per_turn(data: list[dict], stats: list[str], divide_turns: boo
     return pd.DataFrame(final)
 
 
-def avg_boost_diff_per_turn(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+def avg_boost_diff_per_turn(data: list[dict], test: bool = False) -> pd.DataFrame:
     '''
     Calculate the average boost values for P1 and P2's Pokémon per turn.
     Boosts are temporary stat modifications that occur during battle.
@@ -823,7 +823,7 @@ def accuracy_avg(data: list[dict], difference: bool = False, divide_turns: bool 
 
     Args:
         data: List of battle dictionaries
-        difference: If True, returns the difference (P1 - P2) in average accuracy, base power and priority
+        difference: If True, returns the difference (P1 - P2) in average accuracy and priority
         divide_turns: If True, computes separate averages for first 10, middle 10, and last 10 turns
         test: If True, excludes the "player_won" column from the output.
 
@@ -1347,21 +1347,24 @@ def calculate_voluntary_swap_diff(data: list[dict], difference: bool = True, tes
     return pd.DataFrame(final)
 
 
-def hp_advantage_flip_count(data: list[dict], test: bool = False) -> pd.DataFrame:
+def team_hp_advantage_flip_count(data: list[dict], team_size: int = 6, test: bool = False) -> pd.DataFrame:
     """
-    Counts how many times the HP advantage "flips" between P1 and P2.
-    A flip occurs when the player with the higher hp_pct changes
-    from one turn to the next.
+    Counts how many times the *average team HP* advantage "flips" between P1 and P2.
     
-    This measures battle volatility.
+    This generalizes hp_advantage_flip_count by using the team-wide HP 
+    calculation logic from avg_final_HP_pct (unseen Pokémon = 1.0 HP).
+    
+    A flip occurs when the player with the higher *average team hp_pct* changes from one turn to the next.
+
+    This measures battle volatility at the team level.
 
     Args:
         data (list): The list of battle dictionaries.
-        
+        team_size (int): The number of Pokémon per team (default 6).
         test (bool): If True, excludes the "player_won" column.
 
     Returns:
-        A pandas DataFrame with the calculated flip counts.
+        A pandas DataFrame with the calculated flip counts for each battle.
     """
     final = []
     for battle in data:
@@ -1371,23 +1374,51 @@ def hp_advantage_flip_count(data: list[dict], test: bool = False) -> pd.DataFram
         p1_gained_adv_count = 0
         p2_gained_adv_count = 0
         
-        # -1 if P2 has more HP, 0 if equal, 1 if P1 has more HP
+        # -1 if P2 has more avg HP, 0 if equal, 1 if P1 has more avg HP
         last_advantage_state = 0 
 
+        # These dicts store the last known HP for each Pokémon on a team
+        # They are updated as the battle progresses
+        p1_team_hp = {} # Key: pokemon name, Value: hp_pct
+        p2_team_hp = {} # Key: pokemon name, Value: hp_pct
+
         for turn in battle['battle_timeline']:
+            # 1. Update the known HP for the active Pokémon
             p1_state = turn.get('p1_pokemon_state', {})
             p2_state = turn.get('p2_pokemon_state', {})
 
-            p1_hp = p1_state.get('hp_pct', 0.0)
-            p2_hp = p2_state.get('hp_pct', 0.0)
+            name1 = p1_state.get('name')
+            name2 = p2_state.get('name')
+            hp1 = p1_state.get('hp_pct')
+            hp2 = p2_state.get('hp_pct')
 
+            # Update dictionaries if the pokemon name and HP are valid
+            if name1 and hp1 is not None:
+                p1_team_hp[name1] = hp1
+            if name2 and hp2 is not None:
+                p2_team_hp[name2] = hp2
+
+            # 2. Calculate current average team HP for P1
+            # (sum of known HPs) + (1.0 * number of unseen Pokémon)
+            p1_seen_count = len(p1_team_hp)
+            p1_unseen_count = team_size - p1_seen_count
+            p1_total_hp = np.sum(list(p1_team_hp.values())) + (p1_unseen_count * 1.0)
+            avg_hp_pct_p1 = p1_total_hp / team_size
+
+            # 3. Calculate current average team HP for P2
+            p2_seen_count = len(p2_team_hp)
+            p2_unseen_count = team_size - p2_seen_count
+            p2_total_hp = np.sum(list(p2_team_hp.values())) + (p2_unseen_count * 1.0)
+            avg_hp_pct_p2 = p2_total_hp / team_size
+
+            # 4. Determine advantage state based on team averages
             current_advantage_state = 0
-            if p1_hp > p2_hp:
+            if avg_hp_pct_p1 > avg_hp_pct_p2:
                 current_advantage_state = 1
-            elif p2_hp > p1_hp:
+            elif avg_hp_pct_p2 > avg_hp_pct_p1:
                 current_advantage_state = -1
 
-            # Check for a flip (and ignore state 0 -> 1 or 0 -> -1 at the start)
+            # 5. Check for a flip (and ignore state 0 -> 1 or 0 -> -1 at the start)
             if current_advantage_state != last_advantage_state and last_advantage_state != 0:
                 total_flips += 1
                 if current_advantage_state == 1: # P1 just gained the advantage
@@ -1395,12 +1426,14 @@ def hp_advantage_flip_count(data: list[dict], test: bool = False) -> pd.DataFram
                 elif current_advantage_state == -1: # P2 just gained the advantage
                     p2_gained_adv_count += 1
 
-            # Update the last state *only if* it's not a tie
+            # 6. Update the last state *only if* it's not a tie
             if current_advantage_state != 0:
                 last_advantage_state = current_advantage_state
         
-
-        result['total_hp_adv_flips'] = total_flips
+        # Store results for the battle
+        result['total_team_hp_adv_flips'] = total_flips
+        result['p1_gained_team_adv_count'] = p1_gained_adv_count
+        result['p2_gained_team_adv_count'] = p2_gained_adv_count
 
         if not test:
             result['player_won'] = battle.get('player_won')
@@ -1696,7 +1729,7 @@ def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = Fa
     Calculates the average approximate damage dealt by P1 and P2 per turn
     over the entire battle, based on the Gen 1 damage formula.
     
-    Formula: ( ( (2*Lvl)/5 +2) * Atk/Def * Base)/50 + 2 ) * Modifier
+    Formula: ( ( (2*Lvl)/5 +2) * Atk/Def * Base_power)/50 + 2 ) * Modifier
     
     Approximations made:
     - Level (Lvl) is 100. Constant = (2*100)/5 + 2 = 42

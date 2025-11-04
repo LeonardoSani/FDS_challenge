@@ -32,7 +32,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 ratio_category_diff(battle_data, difference=difference,test=flag_test),
                 calculate_voluntary_swap_diff(battle_data, difference=difference, test=flag_test),
                 hp_advantage_flip_count(battle_data, test=flag_test),
-                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test),
+                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test, divide_turns=divide_turns), # maybe better without turns for trees
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
                 avg_approx_damage(battle_data, difference=difference ,test=flag_test)
             ]
@@ -52,7 +52,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 ratio_category_diff(battle_data, difference=difference,test=flag_test),
                 calculate_voluntary_swap_diff(battle_data, difference=difference, test=flag_test),
                 hp_advantage_flip_count(battle_data, test=flag_test),
-                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test),
+                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test, divide_turns=divide_turns), 
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
                 avg_approx_damage(battle_data, difference=difference , test=flag_test)
             ]           
@@ -74,7 +74,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 ratio_category_diff(battle_data, difference=difference ,test=flag_test),
                 calculate_voluntary_swap_diff(battle_data, difference=difference,test=flag_test),
                 hp_advantage_flip_count(battle_data, test=flag_test),
-                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test),
+                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test, divide_turns=divide_turns), # maybe better without turns for trees
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
                 avg_approx_damage(battle_data, difference=difference , test=False)
             ]
@@ -94,7 +94,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 ratio_category_diff(battle_data, difference=difference ,test=flag_test),
                 calculate_voluntary_swap_diff(battle_data, difference=difference,test=flag_test),
                 hp_advantage_flip_count(battle_data, test=flag_test),
-                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test),
+                damage_efficiency_ratio(battle_data, difference=difference, test=flag_test, divide_turns=divide_turns),
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
                 avg_approx_damage(battle_data, difference=difference , test=False)
             ]            

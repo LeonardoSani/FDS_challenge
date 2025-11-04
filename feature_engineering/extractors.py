@@ -1410,7 +1410,7 @@ def hp_advantage_flip_count(data: list[dict], test: bool = False) -> pd.DataFram
     return pd.DataFrame(final)
 
 
-def damage_efficiency_ratio(data: list[dict], difference: bool = False, test: bool = False) -> pd.DataFrame:
+def damage_efficiency_ratio(data: list[dict], difference: bool = False, divide_turns: bool = True, test: bool = False) -> pd.DataFrame:
     """
     Calculates the Damage Efficiency Ratio (DER) for both players.
     
@@ -1427,94 +1427,158 @@ def damage_efficiency_ratio(data: list[dict], difference: bool = False, test: bo
     Args:
         data (list): The list of battle dictionaries.
         difference (bool): If True, returns the difference (P1_DER - P2_DER).
+        divide_turns (bool): If True, computes separate ratios for first 10, middle 10, and last 10 turns.
         test (bool): If True, excludes the "player_won" column.
 
     Returns:
         A pandas DataFrame with the calculated DER features.
     """
+    TURN_SEGMENTS = {
+        'first_10': (0, 10),
+        'middle_10': (10, 20),
+        'last_10': (-10, None) # Use slicing logic: last 10 turns
+    }
+    
     final = []
     
     for battle in data:
         result = {'battle_id': battle['battle_id']}
-        
-        # Track total HP loss for each team.
-        # total_damage_dealt_by_p1 == total_hp_loss_by_p2
-        # total_damage_dealt_by_p2 == total_hp_loss_by_p1
-        total_hp_loss_by_p1 = 0.0
-        total_hp_loss_by_p2 = 0.0
-        
-        # Dictionaries to store the last known HP of each Pokémon
-        p1_team_hp = {}
-        p2_team_hp = {}
+        timeline = battle.get('battle_timeline', [])
 
-        # Initialize P1's team with 100% HP
-        for pokemon in battle.get('p1_team_details', []):
-            if pokemon.get('name'):
-                p1_team_hp[pokemon.get('name')] = 1.0
-        
-        # Initialize P2's lead with 100% HP
-        p2_lead = battle.get('p2_lead_details', {})
-        if p2_lead.get('name'):
-            p2_team_hp[p2_lead.get('name')] = 1.0
+        if not divide_turns:
+            # Track total HP loss for each team.
+            total_hp_loss_by_p1 = 0.0
+            total_hp_loss_by_p2 = 0.0
+            
+            # Dictionaries to store the last known HP of each Pokémon
+            p1_team_hp = {}
+            p2_team_hp = {}
 
-        # Iterate through the timeline to sum up all HP loss
-        for turn in battle.get('battle_timeline', []):
-            p1_state = turn.get('p1_pokemon_state', {})
-            p2_state = turn.get('p2_pokemon_state', {})
+            # Initialize P1's team with 100% HP
+            for pokemon in battle.get('p1_team_details', []):
+                if pokemon.get('name'):
+                    p1_team_hp[pokemon.get('name')] = 1.0
             
-            p1_name = p1_state.get('name')
-            p2_name = p2_state.get('name')
-            
-            p1_hp_pct = p1_state.get('hp_pct')
-            p2_hp_pct = p2_state.get('hp_pct')
-            
-            # Skip turns with incomplete data
-            if p1_name is None or p2_name is None or p1_hp_pct is None or p2_hp_pct is None:
-                continue
+            # Initialize P2's lead with 100% HP
+            p2_lead = battle.get('p2_lead_details', {})
+            if p2_lead.get('name'):
+                p2_team_hp[p2_lead.get('name')] = 1.0
 
-            # --- Calculate P1 HP Loss (Damage Dealt by P2) ---
-            # Get last known HP, default to 1.0 for the first time seeing it
-            last_p1_hp = p1_team_hp.get(p1_name, 1.0)
-            
-            if p1_hp_pct < last_p1_hp:
-                # Add the difference (damage taken)
-                total_hp_loss_by_p1 += (last_p1_hp - p1_hp_pct)
-            
-            # Update the last known HP for this Pokémon
-            p1_team_hp[p1_name] = p1_hp_pct
-            
-            # --- Calculate P2 HP Loss (Damage Dealt by P1) ---
-            # Get last known HP, default to 1.0 for the first time seeing it
-            last_p2_hp = p2_team_hp.get(p2_name, 1.0)
-            
-            if p2_hp_pct < last_p2_hp:
-                # Add the difference (damage taken)
-                total_hp_loss_by_p2 += (last_p2_hp - p2_hp_pct)
-            
-            # Update the last known HP for this Pokémon
-            p2_team_hp[p2_name] = p2_hp_pct
+            # Iterate through the timeline to sum up all HP loss
+            for turn in timeline:
+                p1_state = turn.get('p1_pokemon_state', {})
+                p2_state = turn.get('p2_pokemon_state', {})
+                
+                p1_name = p1_state.get('name')
+                p2_name = p2_state.get('name')
+                
+                p1_hp_pct = p1_state.get('hp_pct')
+                p2_hp_pct = p2_state.get('hp_pct')
+                
+                # Skip turns with incomplete data
+                if p1_name is None or p2_name is None or p1_hp_pct is None or p2_hp_pct is None:
+                    continue
 
-        # --- Calculate Final DERs ---
-        
-        # P1's DER: Damage P1 Dealt (P2 HP Loss) / Damage P1 Took (P1 HP Loss)
-        if total_hp_loss_by_p1 == 0.0:
-            p1_der = total_hp_loss_by_p2 + 1.0  # Handle division by zero
-        else:
-            p1_der = total_hp_loss_by_p2 / total_hp_loss_by_p1
-            
-        # P2's DER: Damage P2 Dealt (P1 HP Loss) / Damage P2 Took (P2 HP Loss)
-        if total_hp_loss_by_p2 == 0.0:
-            p2_der = total_hp_loss_by_p1 + 1.0  # Handle division by zero
-        else:
-            p2_der = total_hp_loss_by_p1 / total_hp_loss_by_p2
+                # --- Calculate P1 HP Loss (Damage Dealt by P2) ---
+                last_p1_hp = p1_team_hp.get(p1_name, 1.0)
+                if p1_hp_pct < last_p1_hp:
+                    total_hp_loss_by_p1 += (last_p1_hp - p1_hp_pct)
+                p1_team_hp[p1_name] = p1_hp_pct
+                
+                # --- Calculate P2 HP Loss (Damage Dealt by P1) ---
+                last_p2_hp = p2_team_hp.get(p2_name, 1.0)
+                if p2_hp_pct < last_p2_hp:
+                    total_hp_loss_by_p2 += (last_p2_hp - p2_hp_pct)
+                p2_team_hp[p2_name] = p2_hp_pct
 
-        # --- Format Output ---
-        if difference:
-            result['der_diff'] = p1_der - p2_der
-        else:
-            result['p1_der'] = p1_der
-            result['p2_der'] = p2_der
-        
+            # Calculate DERs
+            if total_hp_loss_by_p1 == 0.0:
+                p1_der = total_hp_loss_by_p2 + 1.0
+            else:
+                p1_der = total_hp_loss_by_p2 / total_hp_loss_by_p1
+                
+            if total_hp_loss_by_p2 == 0.0:
+                p2_der = total_hp_loss_by_p1 + 1.0
+            else:
+                p2_der = total_hp_loss_by_p1 / total_hp_loss_by_p2
+
+            if difference:
+                result['der_diff'] = p1_der - p2_der
+            else:
+                result['p1_der'] = p1_der
+                result['p2_der'] = p2_der
+
+        else:  # divide_turns=True
+            for segment_name, (start, end) in TURN_SEGMENTS.items():
+                # Determine the slice of the timeline for the current segment
+                if start is not None and end is None and start < 0:
+                    segment_timeline = timeline[start:]  # Last N turns
+                elif start is not None and end is not None:
+                    segment_timeline = timeline[start:end]  # Middle section
+                else:
+                    segment_timeline = []
+
+                # Initialize segment-specific tracking
+                segment_hp_loss_by_p1 = 0.0
+                segment_hp_loss_by_p2 = 0.0
+                
+                p1_team_hp = {}
+                p2_team_hp = {}
+                
+                # Initialize P1's team
+                for pokemon in battle.get('p1_team_details', []):
+                    if pokemon.get('name'):
+                        p1_team_hp[pokemon.get('name')] = 1.0
+                
+                # Initialize P2's lead
+                p2_lead = battle.get('p2_lead_details', {})
+                if p2_lead.get('name'):
+                    p2_team_hp[p2_lead.get('name')] = 1.0
+
+                # Process the segment
+                for turn in segment_timeline:
+                    p1_state = turn.get('p1_pokemon_state', {})
+                    p2_state = turn.get('p2_pokemon_state', {})
+                    
+                    p1_name = p1_state.get('name')
+                    p2_name = p2_state.get('name')
+                    
+                    p1_hp_pct = p1_state.get('hp_pct')
+                    p2_hp_pct = p2_state.get('hp_pct')
+                    
+                    if p1_name is None or p2_name is None or p1_hp_pct is None or p2_hp_pct is None:
+                        continue
+
+                    # Calculate P1 HP Loss
+                    last_p1_hp = p1_team_hp.get(p1_name, 1.0)
+                    if p1_hp_pct < last_p1_hp:
+                        segment_hp_loss_by_p1 += (last_p1_hp - p1_hp_pct)
+                    p1_team_hp[p1_name] = p1_hp_pct
+                    
+                    # Calculate P2 HP Loss
+                    last_p2_hp = p2_team_hp.get(p2_name, 1.0)
+                    if p2_hp_pct < last_p2_hp:
+                        segment_hp_loss_by_p2 += (last_p2_hp - p2_hp_pct)
+                    p2_team_hp[p2_name] = p2_hp_pct
+
+                # Calculate segment DERs
+                if segment_hp_loss_by_p1 == 0.0:
+                    p1_der = segment_hp_loss_by_p2 + 1.0
+                else:
+                    p1_der = segment_hp_loss_by_p2 / segment_hp_loss_by_p1
+                    
+                if segment_hp_loss_by_p2 == 0.0:
+                    p2_der = segment_hp_loss_by_p1 + 1.0
+                else:
+                    p2_der = segment_hp_loss_by_p1 / segment_hp_loss_by_p2
+
+                # Store segment results
+                if difference:
+                    result[f'{segment_name}_der_diff'] = p1_der - p2_der
+                else:
+                    result[f'{segment_name}_p1_der'] = p1_der
+                    result[f'{segment_name}_p2_der'] = p2_der
+
         if not test:
             result['player_won'] = battle.get('player_won')
             

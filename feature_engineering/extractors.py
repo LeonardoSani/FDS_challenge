@@ -598,17 +598,26 @@ def avg_final_HP_pct(data: list[dict], difference: bool = False, test: bool = Fa
             p2_dict[name2] = Hp_2
 
         # calculate the average even if a pokemon is fainted (0% hp) or not present (100% hp)
-         # assuming a team of 6 pokemons
-        avg_hp_pct_p1 = (np.sum(list(p1_dict.values())) + (6 - len(p1_dict)) ) / 6
-        avg_hp_pct_p2 = (np.sum(list(p2_dict.values())) + (6 - len(p2_dict)) ) / 6 
+        # assuming a team of 6 pokemons
+        full_hp_p1 = list(p1_dict.values()) + [1.0] * (6 - len(p1_dict))
+        full_hp_p2 = list(p2_dict.values()) + [1.0] * (6 - len(p2_dict))
+
+        avg_hp_pct_p1 = np.mean(full_hp_p1)
+        avg_hp_pct_p2 = np.mean(full_hp_p2)
+
+        var_hp_pct_p1 = np.var(full_hp_p1)
+        var_hp_pct_p2 = np.var(full_hp_p1)
 
         result = {'battle_id': battle['battle_id']}
 
         if difference:
             result['avg_final_hp_pct_diff'] = avg_hp_pct_p1 - avg_hp_pct_p2
+            result['var_final_hp_pct_diff'] = var_hp_pct_p1 - var_hp_pct_p2
         else:
             result['avg_final_hp_pct_p1'] = avg_hp_pct_p1
             result['avg_final_hp_pct_p2'] = avg_hp_pct_p2
+            result['var_final_hp_pct_p1'] = var_hp_pct_p1
+            result['var_final_hp_pct_p2'] = var_hp_pct_p2
         
         if not test:
             result['player_won'] = battle['player_won']

@@ -1867,3 +1867,85 @@ def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = Fa
         final.append(result)
 
     return pd.DataFrame(final)
+
+
+def final_type_advantage(data: list[dict], difference: bool = True, test: bool = False) -> pd.DataFrame:
+
+    pokemon_Stab_types = get_dict_def_types(data)
+
+    final = []
+
+    for battle in data:
+
+        pokemon_dict_1 = {}
+        pokemon_dict_2 = {}
+        for turn in battle['battle_timeline']:
+            p1_pokemon_state= turn.get('p1_pokemon_state') # take the p1_pokemon_state dict
+            p2_pokemon_state= turn.get('p2_pokemon_state')
+
+            name1 = p1_pokemon_state.get('name') # take the name of the pokemon insidide p1_pokemon_state dict
+            name2 = p2_pokemon_state.get('name')
+
+            hp_pct_1 = p1_pokemon_state.get('hp_pct')
+            hp_pct_2 = p2_pokemon_state.get('hp_pct')
+
+            type_stab_1 = list(pokemon_Stab_types.get(name1))
+            type_stab_2 = list(pokemon_Stab_types.get(name2))
+
+            pokemon_dict_1[name1] = [hp_pct_1,type_stab_1]
+            pokemon_dict_2[name2] = [hp_pct_2,type_stab_2]
+
+
+        survived_p1 = {k: v for k, v in pokemon_dict_1.items() if v[0] > 0}
+        survived_p2 = {k: v for k, v in pokemon_dict_2.items() if v[0] > 0}
+     
+        # now they contain only the survived pokemons among the observed in the first 30 turns
+
+        # compute power of P1 against P2
+        power_p1 = 0
+        for pok1 in survived_p1:
+            for tp1 in survived_p1.get(pok1)[1]:
+                if tp1 != 'notype':
+                    for pok2 in survived_p2:
+                        tps2 = survived_p2.get(pok2)[1]
+                        power_p1 += effectiveness(tp1, tps2) # Assumes effectiveness(type, [list_of_types])
+
+         # compute power of P2 against P1
+        power_p2 = 0
+        for pok2 in survived_p2:
+            # <--- FIX 1: Corrected 'pok1' to 'pok2'
+            for tp2 in survived_p2.get(pok2)[1]:
+                if tp2 != 'notype':
+                    for pok1 in survived_p1:
+                        tps1 = survived_p1.get(pok1)[1]
+                        # <--- FIX 2: Corrected 'power_p1' to 'power_p2'
+                        power_p2 += effectiveness(tp2, tps1)
+
+
+        if len(survived_p1) > 0 and len(survived_p2) > 0:
+            power_p1 /= len(survived_p1) * len(survived_p2)
+            power_p2 /= len(survived_p2) * len(survived_p1)
+        else:
+            # If one side has no survivors, set the powers sensibly
+            # Example: if no survivors, that side’s power is 0
+            if len(survived_p1) == 0:
+                power_p1 = 0
+            if len(survived_p2) == 0:
+                power_p2 = 0
+
+
+
+        result = {'battle_id': battle['battle_id']}
+
+        if difference:
+            result['final_type_advantage_diff'] = power_p1 - power_p2
+            
+        else:
+            result['final_type_advantage_p1'] = power_p1 
+            result['final_type_advantage_p2'] = power_p2
+        if not test:
+            result['player_won'] = battle['player_won']
+            
+        final.append(result)
+    
+    return pd.DataFrame(final)

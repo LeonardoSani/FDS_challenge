@@ -264,3 +264,12 @@ def top_correlated_features(X: pd.DataFrame, n: int = 20) -> pd.DataFrame:
 
     # Return top n
     return corr_unstacked.head(n)[['Feature 1', 'Feature 2', 'Correlation']]
+
+
+def make_submission(pipeline, X_train, Y_train, X_test, test_battle_ids, name):
+
+    submission=train_and_predict(pipeline, X_train, Y_train, X_test, test_battle_ids)
+
+    submission.to_csv(f"submission_{name}.csv", index=False)
+
+    print(f"Submission saved to submission_{name}.csv")

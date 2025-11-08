@@ -210,15 +210,6 @@ def perform_grid_search(pipeline, param_grid, X_train, Y_train, cv_splits=5):
     print(f"Best cross-validation accuracy: {grid_search.best_score_:.8f}")
     print(f"Best CV accuracy std dev: {best_std:.8f}")
     
-    # Get predictions from best model for confusion matrix
-    Y_pred = grid_search.predict(X_train)
-    cm = confusion_matrix(Y_train, Y_pred)
-    
-    # Plot confusion matrix
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Lost', 'Won'])
-    disp.plot()
-    plt.title('Confusion Matrix for Best Model (Training Data)')
-    plt.show()
     
     # Return the best model found
     return grid_search.best_estimator_
@@ -244,3 +235,32 @@ def evaluate_model(pipeline, X_train, Y_train, cv_splits=5):
     
     return mean_score, std_dev
 
+
+def top_correlated_features(X: pd.DataFrame, n: int = 20) -> pd.DataFrame:
+    """
+    Return the top n pairs of most correlated features (by absolute value).
+
+    Args:
+        X (pd.DataFrame): Input dataframe with numerical features.
+        n (int): Number of top correlated pairs to return (default=20).
+
+    Returns:
+        pd.DataFrame: Columns: ['Feature 1', 'Feature 2', 'Correlation']
+    """
+    # Compute correlation matrix
+    corr_matrix = X.corr(numeric_only=True)
+    
+    # Extract upper triangle of correlation matrix (excluding self-correlations)
+    mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
+    corr_pairs = corr_matrix.where(mask)
+
+    # Convert to long form
+    corr_unstacked = corr_pairs.unstack().dropna().reset_index()
+    corr_unstacked.columns = ['Feature 1', 'Feature 2', 'Correlation']
+
+    # Sort by absolute correlation (descending)
+    corr_unstacked['AbsCorr'] = corr_unstacked['Correlation'].abs()
+    corr_unstacked = corr_unstacked.sort_values(by='AbsCorr', ascending=False)
+
+    # Return top n
+    return corr_unstacked.head(n)[['Feature 1', 'Feature 2', 'Correlation']]

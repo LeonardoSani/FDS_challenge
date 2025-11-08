@@ -6,9 +6,9 @@ from .logistic_regression import (
     create_model_pipeline_poly,
     train_and_predict, 
     perform_grid_search, 
-    evaluate_model
-    )
-
+    evaluate_model,
+    top_correlated_features
+)
 
 __all__ = [
     # Logistic_Regression
@@ -18,7 +18,8 @@ __all__ = [
     'create_model_pipeline_poly',
     'train_and_predict',
     'perform_grid_search',
-    'evaluate_model'
+    'evaluate_model',
+    'top_correlated_features'
     # random_forest
 
     #XGBoost

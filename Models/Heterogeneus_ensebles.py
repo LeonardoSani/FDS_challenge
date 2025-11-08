@@ -34,7 +34,8 @@ def create_base_models(random_state=0):
     xgb_pipe = Pipeline([
         ('scaler', 'passthrough'),
         ('xgb', XGBClassifier(random_state=random_state, n_jobs=-1,
-                              eval_metric='logloss', use_label_encoder=False))
+                              eval_metric='logloss', 
+                              use_label_encoder=False))
     ])
 
     svm_pipe = Pipeline([

@@ -16,6 +16,10 @@ from .utils import (
 
 )
 
+from .Rf_and_xgb import (
+    create_model_pipeline_rf
+)
+
 __all__ = [
     # Logistic_Regression
     'plot_pca_variance',
@@ -24,8 +28,14 @@ __all__ = [
     'create_model_pipeline_poly',
 
     # random_forest
-
+    'create_model_pipeline_rf'
+    
     #XGBoost
+
+    # heterogeneus_ensembles
+    'create_base_models',
+    'create_voting_classifier',
+    'create_stacking_classifier',
 
     #utils
     'train_and_predict',

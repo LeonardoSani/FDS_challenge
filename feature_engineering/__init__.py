@@ -18,7 +18,8 @@ from .extractors import (
     team_hp_advantage_flip_count,
     damage_efficiency_ratio,
     pokemon_encoding,
-    avg_approx_damage
+    avg_approx_damage,
+    first_KO_momentum_feature,
 )
 
 from .utils import (
@@ -59,7 +60,9 @@ __all__ = [
     'damage_efficiency_ratio',
     'pokemon_encoding',
     'avg_approx_damage',
+    'first_KO_momentum_feature',
     
+
     # Utility Functions
     'get_dict_from_json',
     'pokedex',

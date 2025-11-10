@@ -34,6 +34,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 team_hp_advantage_flip_count(battle_data, test=flag_test),
                 damage_efficiency_ratio(battle_data, difference=difference, test=flag_test, divide_turns=divide_turns), # maybe better without turns for trees
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
+                first_KO_momentum_feature(battle_data, test=flag_test), # only for tree based models
                 avg_approx_damage(battle_data, difference=difference ,test=flag_test)
             ]
         else:
@@ -76,6 +77,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 team_hp_advantage_flip_count(battle_data, test=flag_test),
                 damage_efficiency_ratio(battle_data, difference=difference, test=flag_test, divide_turns=divide_turns), # maybe better without turns for trees
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
+                first_KO_momentum_feature(battle_data, test=flag_test), # only for tree based models
                 avg_approx_damage(battle_data, difference=difference , test=False)
             ]
         else:

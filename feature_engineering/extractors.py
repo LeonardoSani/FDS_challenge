@@ -1869,6 +1869,60 @@ def avg_approx_damage(data: list[dict], difference: bool = True, test: bool = Fa
     return pd.DataFrame(final)
 
 
+def first_KO_momentum_feature(data: list[dict], test: bool = False) -> pd.DataFrame:
+    """
+    Compute a single numeric feature per battle:
+      +1/turn if player (P1) scores the first KO,
+      -1/turn if opponent (P2) scores the first KO,
+       0 if no KO occurs within the 30 recorded turns.
+    """
+
+    final = []
+    for battle in data:
+        timeline = battle.get("battle_timeline", [])
+        first_KO_turn = 31   # sentinel for "no KO in first 30 turns"
+        first_KO_side = None
+
+        prev_p1_hp = 1.0
+        prev_p2_hp = 1.0
+
+        for turn in timeline:
+            p1_hp = turn.get("p1_pokemon_state", {}).get("hp_pct", 1.0)
+            p2_hp = turn.get("p2_pokemon_state", {}).get("hp_pct", 1.0)
+
+            # detect a KO (HP drops from >0 to 0)
+            if prev_p2_hp > 0 and p2_hp == 0:
+                first_KO_turn = turn.get("turn", 31)
+                first_KO_side = "p1"
+                break
+            elif prev_p1_hp > 0 and p1_hp == 0:
+                first_KO_turn = turn.get("turn", 31)
+                first_KO_side = "p2"
+                break
+
+            prev_p1_hp, prev_p2_hp = p1_hp, p2_hp
+
+        # Encode into a single numeric value
+        if first_KO_side == "p1":
+            feature_value = 1.0 / first_KO_turn
+        elif first_KO_side == "p2":
+            feature_value = -1.0 / first_KO_turn
+        else:
+            feature_value = 0.0
+
+        result = {
+            "battle_id": battle["battle_id"],
+            "first_KO_momentum": feature_value
+        }
+
+        if not test:
+            result["player_won"] = battle.get("player_won")
+
+        final.append(result)
+
+    return pd.DataFrame(final)
+
+
 def final_type_advantage(data: list[dict], difference: bool = True, test: bool = False) -> pd.DataFrame:
 
     pokemon_Stab_types = get_dict_def_types(data)

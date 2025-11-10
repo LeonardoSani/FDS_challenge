@@ -32,7 +32,10 @@ from .utils import (
     get_dict_base_stats,
     get_dict_base_stats1,
     get_all_status_conditions,
-    get_all_effects
+    get_all_effects,
+    get_last_hp,
+    get_p1_bench,
+    team_potential
 )
 from .Aggregator import generate_features
 
@@ -69,6 +72,9 @@ __all__ = [
     'get_dict_base_stats1',
     'get_all_status_conditions',
     'get_all_effects',
+    'get_last_hp',
+    'get_p1_bench',
+    'team_potential',
     
     # Aggregator Function
     'generate_features'

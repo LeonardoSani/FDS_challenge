@@ -17,7 +17,12 @@ from .utils import (
 )
 
 from .Rf_and_xgb import (
-    create_model_pipeline_rf
+    create_model_pipeline_rf,
+    create_model_pipeline_xgb
+)
+
+from .Heterogeneus_ensembles import (
+    CustomVoter
 )
 
 __all__ = [
@@ -28,14 +33,13 @@ __all__ = [
     'create_model_pipeline_poly',
 
     # random_forest
-    'create_model_pipeline_rf'
+    'create_model_pipeline_rf',
+    'create_model_pipeline_xgb',
     
     #XGBoost
 
     # heterogeneus_ensembles
-    'create_base_models',
-    'create_voting_classifier',
-    'create_stacking_classifier',
+    'CustomVoter',
 
     #utils
     'train_and_predict',

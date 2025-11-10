@@ -1,50 +1,51 @@
 from sklearn.ensemble import RandomForestClassifier
-
 from xgboost import XGBClassifier
+from sklearn.pipeline import Pipeline
 
-
-def create_model_pipeline_rf(n_estimators, max_depth, min_samples_split, max_features, random_state=0):
+def create_model_pipeline_rf(random_state=0, **model_kwargs):
     """
+    Creates a RandomForest pipeline that accepts model hyperparameters directly.
+
+    Args:
+        random_state (int): Random seed for reproducibility.
+        **model_kwargs: Additional keyword arguments for RandomForestClassifier.
+
     Returns:
         sklearn.pipeline.Pipeline: The unfitted model pipeline.
     """
-    
-    # Create a list of (name, transformer) tuples
-    steps = [
-        ('model', RandomForestClassifier(n_estimators=n_estimators, 
-                                      max_depth=max_depth,
-                                      max_features=max_features,
-                                      min_samples_split=min_samples_split,
-                                      min_samples_leaf=min_samples_leaf,
-                                      random_state=random_state, 
-                                      n_jobs=-1))
-    ]
-    
-    # Create the pipeline
-    pipeline = Pipeline(steps)
-    
+    model = RandomForestClassifier(
+        random_state=random_state,
+        n_jobs=-1,
+        **model_kwargs
+    )
+
+    pipeline = Pipeline([
+        ('model', model)
+    ])
     return pipeline
 
 
-
-
-def create_model_pipeline_xgb(random_state):
+def create_model_pipeline_xgb(random_state=0, **model_kwargs):
     """
+    Creates an XGBoost pipeline that accepts model hyperparameters directly.
+
+    Args:
+        random_state (int): Random seed for reproducibility.
+        **model_kwargs: Additional keyword arguments for XGBClassifier.
+
     Returns:
         sklearn.pipeline.Pipeline: The unfitted model pipeline.
     """
-    
-    # Create a list of (name, transformer) tuples
-    steps = [
+    model = XGBClassifier(
+        random_state=random_state,
+        n_jobs=-1,
+        use_label_encoder=False,
+        eval_metric='logloss',  # avoids XGBoost warning about deprecated defaults
+        **model_kwargs
+    )
 
-    ('model', XGBClassifier(random_state=42, n_jobs=-1))
-
-    ]
-    
-    # Create the pipeline
-    pipeline = Pipeline(steps)
-    
+    pipeline = Pipeline([
+        ('model', model)
+    ])
     return pipeline
-
-
 # add feature importance

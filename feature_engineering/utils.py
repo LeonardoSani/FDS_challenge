@@ -173,3 +173,183 @@ def get_all_effects(data: list[dict]) -> set:
             for effect in p2_effects:
                 effects.add(effect)
     return effects
+
+
+def get_last_hp(battle: dict, include_fainted: bool = False) -> dict:
+    """
+    Finds the last observed HP percentage for each Pokémon that participated
+    in the battle timeline. Assumes no null data.
+
+    Args:
+        battle: The battle dictionary (complete structure).
+        include_fainted: If True, includes fainted Pokémon (hp_pct == 0)
+                         in the returned dict with a value of 0.0.
+                         If False (default), only includes Pokémon whose
+                         last observed hp_pct > 0.
+
+    Returns:
+        A dictionary with keys 'observed_P1' and 'observed_P2'.
+        Each key holds another dictionary mapping Pokémon names (str) to
+        their last observed HP percentage (float).
+    """
+    p1_last_hp = {}
+    p2_last_hp = {}
+
+    # Iterate through the timeline to find the last-seen HP
+    for turn in battle["battle_timeline"]:
+        # Direct access, assuming these keys always exist
+        p1_state = turn["p1_pokemon_state"]
+        p2_state = turn["p2_pokemon_state"]
+        
+        p1_last_hp[p1_state["name"]] = p1_state["hp_pct"]
+        p2_last_hp[p2_state["name"]] = p2_state["hp_pct"]
+
+    # Filter the results based on the include_fainted flag
+    result = {"observed_P1": {}, "observed_P2": {}}
+
+    for name, hp in p1_last_hp.items():
+        if hp > 0:
+            result["observed_P1"][name] = hp
+        elif include_fainted:
+            result["observed_P1"][name] = 0.0
+
+    for name, hp in p2_last_hp.items():
+        if hp > 0:
+            result["observed_P2"][name] = hp
+        elif include_fainted:
+            result["observed_P2"][name] = 0.0
+
+    return result
+
+
+def get_p1_bench(battle: dict) -> set:
+    """
+    Finds the set of Pokémon on P1's team that never appeared in the
+    battle timeline. Assumes no null data.
+
+    Args:
+        battle: The battle dictionary (complete structure).
+
+    Returns:
+        A set of Pokémon names (str) that were in 'p1_team_details'
+        but not in the 'battle_timeline'.
+    """
+    
+    
+    full_team_names = {p["name"] for p in battle["p1_team_details"]}
+
+    
+    appeared_names = {
+        turn["p1_pokemon_state"]["name"]
+        for turn in battle["battle_timeline"]
+    }
+
+    bench_names = full_team_names - appeared_names
+
+    return bench_names
+
+
+def team_potential(A: list[str], B: list[str], type_dict: dict) -> dict:
+    """
+    (ML-Ready Robust Version)
+    Compute type-based potential of team A (attacker) vs team B (defender).
+    
+    This version explicitly handles the 3 scenarios for a ML model:
+    1. A is empty (0 potential)     -> returns all 0.0
+    2. A not empty, B empty (max advantage) -> returns max values
+    3. A not empty, B not empty (standard case) -> runs calculation
+    """
+
+    POTENTIAL_METRIC_KEYS = [
+    'avg_best_potential', 'min_best_potential', 'max_best_potential',
+    'avg_redundancy', 'min_redundancy', 'coverage_fraction', 'entropy'
+    ]
+
+    # This is the "floor" - we have no attackers, so we have 0 potential.
+    DEFAULT_METRICS_NO_POTENTIAL = {key: 0.0 for key in POTENTIAL_METRIC_KEYS}
+
+    # --- Case 1: Attacker set A is empty ---
+    # We have no attackers, so we have 0 potential. This is the worst case.
+    if not A:
+        return DEFAULT_METRICS_NO_POTENTIAL
+
+    # --- Case 2: Attacker set A is NOT empty, but Defender set B is empty ---
+    # We have an advantage (we have members, they don't).
+    # This is the best case. We return a set of "max" values.
+    if not B:
+        # We've already won.
+        # We set potential to 4.0 (max effectiveness).
+        # We set coverage to 1.0 (100%).
+        # We set redundancy to the number of attackers we have.
+        # Entropy is 0.0 as there's no "spread" against 0 defenders.
+        return {
+            'avg_best_potential': 4.0,
+            'min_best_potential': 4.0,
+            'max_best_potential': 4.0,
+            'avg_redundancy': float(len(A)),
+            'min_redundancy': float(len(A)),
+            'coverage_fraction': 1.0,
+            'entropy': 0.0
+        }
+
+    # --- Case 3: Both A and B have members ---
+    # This is the standard "in-progress" battle.
+    # We run your full calculation (with safety checks).
+    else:
+        best_vs = []
+        redundancy = []
+        
+        for b_name in B:
+            # Safety check for dictionary lookup
+            def_types = list(type_dict.get(b_name, ['notype']))
+            
+            eff_list = []
+            for a_name in A:
+                # Safety check for dictionary lookup
+                att_types = list(type_dict.get(a_name, ['notype']))
+                
+                try:
+                    # We assume effectiveness() exists and works
+                    eff = max(effectiveness(att_type, def_types) for att_type in att_types)
+                except Exception:
+                    eff = 1.0 # Default fallback
+                eff_list.append(eff)
+            
+            # This is safe, since 'A' is not empty
+            best_val = max(eff_list)
+            strong_count = sum(e >= 2.0 for e in eff_list)
+            best_vs.append(best_val)
+            redundancy.append(strong_count)
+        
+        # This is safe, since 'B' is not empty
+        best_vs_np = np.array(best_vs, dtype=float)
+        redundancy_np = np.array(redundancy, dtype=float)
+
+        # --- Aggregates ---
+        avg_best = float(np.mean(best_vs_np))
+        min_best = float(np.min(best_vs_np))
+        max_best = float(np.max(best_vs_np))
+        avg_redund = float(np.mean(redundancy_np))
+        min_redund = float(np.min(redundancy_np))
+        coverage = float(np.mean(best_vs_np >= 2.0))
+
+        # --- Entropy ---
+        if best_vs_np.sum() > 0:
+            p = best_vs_np / best_vs_np.sum()
+            entropy = -float(np.sum(p * np.log(p + 1e-12)))
+            entropy_divisor = np.log(len(B)) if len(B) > 1 else 1.0
+            if entropy_divisor > 0:
+                entropy /= entropy_divisor
+        else:
+            entropy = 0.0
+
+        # Return the dictionary of calculated metrics
+        return {
+            'avg_best_potential': avg_best,
+            'min_best_potential': min_best,
+            'max_best_potential': max_best,
+            'avg_redundancy': avg_redund,
+            'min_redundancy': min_redund,
+            'coverage_fraction': coverage,
+            'entropy': entropy
+        }

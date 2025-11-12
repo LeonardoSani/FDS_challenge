@@ -1923,6 +1923,50 @@ def first_KO_momentum_feature(data: list[dict], test: bool = False) -> pd.DataFr
     return pd.DataFrame(final)
 
 
+def last_turn_status_extractor(data: list[dict], test: bool = False) -> pd.DataFrame:
+    """
+    Calculates the difference in active Pokémon status on the final turn.
+    Relies directly on the 'status' field from the data.
+
+    Args:
+        data (list): The list of battle dictionaries.
+        test (bool): If True, excludes the "player_won" column.
+
+    Returns:
+        A pandas DataFrame with 'status_<status>_diff' columns.
+    """
+    STATUSES_TO_CHECK = {'brn', 'fnt', 'frz', 'nostatus', 'par', 'psn', 'slp', 'tox'}
+
+    final = []
+    
+    for battle in data:
+        result = {'battle_id': battle['battle_id']}
+        
+        # Get the state data from the very last turn
+        last_turn = battle["battle_timeline"][-1]
+        p1_state = last_turn["p1_pokemon_state"]
+        p2_state = last_turn["p2_pokemon_state"]
+
+        # Determine effective status for P1 (directly from data)
+        p1_effective_status = p1_state["status"]
+        
+        # Determine effective status for P2 (directly from data)
+        p2_effective_status = p2_state["status"]
+        
+        # Calculate the diff for each status
+        for status in STATUSES_TO_CHECK:
+            p1_count = int(p1_effective_status == status)
+            p2_count = int(p2_effective_status == status)
+            result[f"status_{status}_diff"] = p1_count - p2_count
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+        
+        final.append(result)
+        
+    return pd.DataFrame(final)
+
+
 def final_type_advantage(data: list[dict], difference: bool = True, test: bool = False) -> pd.DataFrame:
 
     pokemon_Stab_types = get_dict_def_types(data)

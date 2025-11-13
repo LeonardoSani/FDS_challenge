@@ -1,5 +1,5 @@
 # feature_engineering/extractors.py
-from collections import defaultdict
+from collections import defaultdict,Counter
 import numpy as np
 import pandas as pd
 from .utils import *
@@ -1925,38 +1925,61 @@ def first_KO_momentum_feature(data: list[dict], test: bool = False) -> pd.DataFr
 
 def last_turn_status_extractor(data: list[dict], test: bool = False) -> pd.DataFrame:
     """
-    Calculates the difference in active Pokémon status on the final turn.
-    Relies directly on the 'status' field from the data.
+    Calculates the difference in active (non-fainted) Pokémon statuses
+    across each player's entire team at the end of the battle.
+
+    This works by finding the last-observed status for every Pokémon that
+    participated in the timeline, filtering out fainted ('fnt') Pokémon,
+    and then counting the remaining active statuses.
 
     Args:
         data (list): The list of battle dictionaries.
         test (bool): If True, excludes the "player_won" column.
 
     Returns:
-        A pandas DataFrame with 'status_<status>_diff' columns.
+        A pandas DataFrame with 'status_<status>_diff' columns for 
+        non-fainted statuses.
     """
-    STATUSES_TO_CHECK = {'brn', 'fnt', 'frz', 'nostatus', 'par', 'psn', 'slp', 'tox'}
+    # Define the statuses to count (excluding 'fnt', which is used as a filter)
+    ACTIVE_STATUSES = {'brn', 'frz', 'nostatus', 'par', 'psn', 'slp', 'tox'}
 
     final = []
     
     for battle in data:
         result = {'battle_id': battle['battle_id']}
         
-        # Get the state data from the very last turn
-        last_turn = battle["battle_timeline"][-1]
-        p1_state = last_turn["p1_pokemon_state"]
-        p2_state = last_turn["p2_pokemon_state"]
+        # 1. Find the final status for every Pokémon on each team
+        # We iterate through the whole timeline to find the last-known state
+        # for every Pokémon that appeared.
+        p1_final_statuses = {}
+        p2_final_statuses = {}
 
-        # Determine effective status for P1 (directly from data)
-        p1_effective_status = p1_state["status"]
-        
-        # Determine effective status for P2 (directly from data)
-        p2_effective_status = p2_state["status"]
-        
-        # Calculate the diff for each status
-        for status in STATUSES_TO_CHECK:
-            p1_count = int(p1_effective_status == status)
-            p2_count = int(p2_effective_status == status)
+        for turn in battle["battle_timeline"]:
+            # Get states (assuming they always exist)
+            p1_state = turn["p1_pokemon_state"]
+            p2_state = turn["p2_pokemon_state"]
+            
+            # Store/overwrite the last-seen status for each Pokémon name
+            p1_final_statuses[p1_state["name"]] = p1_state["status"]
+            p2_final_statuses[p2_state["name"]] = p2_state["status"]
+
+        # 2. Filter for non-fainted Pokémon
+        # Get a list of statuses for Pokémon that did NOT end as 'fnt'
+        p1_non_fainted_statuses = [
+            status for status in p1_final_statuses.values() if status != 'fnt'
+        ]
+        p2_non_fainted_statuses = [
+            status for status in p2_final_statuses.values() if status != 'fnt'
+        ]
+
+        # 3. Count the occurrences of each active status in the non-fainted lists
+        p1_counts = Counter(p1_non_fainted_statuses)
+        p2_counts = Counter(p2_non_fainted_statuses)
+
+        # 4. Calculate the diff for each *active* status
+        for status in ACTIVE_STATUSES:
+            p1_count = p1_counts.get(status, 0) # Use .get() for safety
+            p2_count = p2_counts.get(status, 0)
             result[f"status_{status}_diff"] = p1_count - p2_count
         
         if not test:

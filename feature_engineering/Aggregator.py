@@ -36,6 +36,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
                 first_KO_momentum_feature(battle_data, test=flag_test), # only for tree based models
                 last_turn_status_extractor(battle_data, test=flag_test),
+                tot_pok_used(battle_data, test=flag_test), # only for tree based models
                 avg_approx_damage(battle_data, difference=difference ,test=flag_test)
             ]
         else:
@@ -81,6 +82,7 @@ def generate_features(battle_data: list[dict], flag_test: bool, difference: bool
                 pokemon_encoding(battle_data, one_hot=one_hot , test=flag_test),
                 first_KO_momentum_feature(battle_data, test=flag_test), # only for tree based models
                 last_turn_status_extractor(battle_data, test=flag_test),
+                tot_pok_used(battle_data, test=flag_test), # only for tree based models
                 avg_approx_damage(battle_data, difference=difference , test=False)
             ]
         else:

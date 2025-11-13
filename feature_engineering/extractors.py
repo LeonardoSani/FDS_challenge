@@ -2,7 +2,7 @@
 from collections import defaultdict
 import numpy as np
 import pandas as pd
-from .utils import get_dict_def_types, get_dict_attacker_types, get_dict_base_stats, effectiveness, get_dict_base_stats1
+from .utils import *
 
 def avg_effectiveness_1(data: list[dict], difference=False, test=False) -> pd.DataFrame:
     """ Given the database 
@@ -1958,6 +1958,28 @@ def last_turn_status_extractor(data: list[dict], test: bool = False) -> pd.DataF
             p1_count = int(p1_effective_status == status)
             p2_count = int(p2_effective_status == status)
             result[f"status_{status}_diff"] = p1_count - p2_count
+        
+        if not test:
+            result['player_won'] = battle['player_won']
+        
+        final.append(result)
+        
+    return pd.DataFrame(final)
+
+
+def tot_pok_used(data: list[dict], test: bool = False) -> pd.DataFrame:
+
+    final = []
+    
+    for battle in data:
+        result = {'battle_id': battle['battle_id']}
+
+        teams=get_last_hp(battle=battle,include_fainted=True)
+
+        team1= teams.get('observed_P1')
+        team2= teams.get('observed_P2')
+
+        result['pok_used_diff'] = len(team1)- len(team2)
         
         if not test:
             result['player_won'] = battle['player_won']

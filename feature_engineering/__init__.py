@@ -20,7 +20,8 @@ from .extractors import (
     pokemon_encoding,
     avg_approx_damage,
     first_KO_momentum_feature,
-    last_turn_status_extractor
+    last_turn_status_extractor,
+    tot_pok_used
 )
 
 from .utils import (
@@ -63,6 +64,7 @@ __all__ = [
     'avg_approx_damage',
     'first_KO_momentum_feature',
     'last_turn_status_extractor',
+    'tot_pok_used',
     
 
     # Utility Functions

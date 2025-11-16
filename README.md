@@ -90,9 +90,10 @@ The extended report (methodology, visualizations, and detailed analysis) is avai
 
 
 ##  Authors
-
+- **Leonardo Sani**
+- **Mohammad Sorooshmehr**
 - **Simone Mantero**  
-- **Leonardo Sani (2059860)**
-- **Mohammad Sorooshmehr(1947890)- sorooshmehr.1947890@studenti.uniroma1.it**
+
+
 
 

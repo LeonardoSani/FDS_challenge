@@ -93,50 +93,9 @@ All models were optimized using **GridSearchCV** with 10-fold cross-validation.
 Models selected for the private leaderboard are highlighted in the final report.
 
 
-## How to Run the Project
 
-### 1. Clone the Repository
 
-```bash
-git clone https://github.com/<username>/FDS_Challenge.git
-cd FDS_Challenge
 
-```
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-If you use uv:
-```bash
-uv sync
-```
-
-### 3. Run the Notebook
-
-Open Notebook.ipynb to explore:
--	EDA
--	Feature creation
--	Model training
--	Performance comparison
--	Visualizations
-
-### 4. Using the Feature Extraction Module
-
-**Example (pseudo-code):**
-
-```python
-from extractors import get_features
-from Aggregator import FeatureAggregator
-
-# Extract raw features from the battle data
-features = get_features(data)
-
-# Initialize the feature aggregator
-agg = FeatureAggregator(features)
-
-# Build the feature set for a specific model (e.g., XGBoost)
-X = agg.build_feature_set("xgb")
-```
 ##  Results
 
 The best-performing model is **XGBoost**, achieving an accuracy of approximately **85%**.  
@@ -154,6 +113,52 @@ The most influential features include:
 
 The extended report (methodology, visualizations, and detailed analysis) is available here:  
 **FDS_Challenge_Report.pdf**
+
+---
+
+##  Project Modules Overview
+
+The repository is organized into modular Python components that separate
+feature extraction, aggregation, modeling, and utilities.  
+Each module plays a specific role in the full pipeline:
+
+- **extractors.py** – Functions to parse the raw battle data and compute
+  first-level features (HP, effectiveness, switches, states per turn, etc.).
+
+- **Aggregator.py** – Combines and activates feature groups, producing
+  tailored feature sets for different model families (linear, tree-based, ensembles).
+
+- **utils.py** – Core helper functions and domain logic  
+  (type charts, base stats, dictionaries, damage utility helpers, validations).
+
+- **Models folder** – Contains implementations for:
+  - Logistic Regression (standard, PCA, polynomial)
+  - Random Forest
+  - XGBoost
+  - Heterogeneous soft-voting ensemble  
+  Each model script includes hyperparameter tuning (GridSearchCV) and evaluation tools.
+
+---
+
+## Notebook Description
+
+The `Notebook.ipynb` integrates all modules into a complete workflow.  
+Inside the notebook you will find:
+
+- **Dataset exploration**  
+  Visual inspection and understanding of the original battle data structure.
+
+- **Feature explanation**  
+  Practical demonstration of how each engineered feature is generated using the functions defined in the modules.
+
+- **Model training**  
+  Training routines for Logistic Regression, Random Forest, XGBoost, and the Ensemble model.
+
+- **Validation & performance analysis**  
+  Cross-validation, comparison of results, plots, and final model selection.
+
+This notebook acts as the main interactive environment to understand,
+run, and evaluate the entire project pipeline.
 
 ---
 

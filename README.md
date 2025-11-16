@@ -17,16 +17,29 @@ The goal is to determine which player (P1 or P2) will win a Pokémon battle with
 ##  Repository Structure
 
 ```
-\
-├── extractors.py 
-├── utils.py
-├── constants.py
-├── Aggregator.py
-├── Heterogeneus_ensembles.py
-├── logistic_regression.py
-├── Rf_and_xgb.py
+/
+├── feature_engineering/
+│   ├── __init__.py
+│   ├── extractors.py
+│   ├── utils.py
+│   ├── constants.py
+│   └── Aggregator.py
+│
+├── Models/
+│   ├── __init__.py
+
+│   ├── Heterogeneus_ensembles.py
+│   ├── logistic_regression.py
+│   ├── Rf_and_xgb.py
+│   └── utils.py
+│
 ├── Notebook.ipynb
-└── FDS_Challenge_Report.pdf
+├── FDS_Challenge_Report.pdf
+├── pyproject.toml
+├── uv.lock
+├── .python-version
+├── .gitignore
+└── README.md
 ```
 ##  Feature Engineering
 

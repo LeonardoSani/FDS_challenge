@@ -27,7 +27,6 @@ The goal is to determine which player (P1 or P2) will win a Pokémon battle with
 │
 ├── Models/
 │   ├── __init__.py
-
 │   ├── Heterogeneus_ensembles.py
 │   ├── logistic_regression.py
 │   ├── Rf_and_xgb.py

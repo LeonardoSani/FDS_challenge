@@ -63,81 +63,6 @@ Each module plays a specific role in the full pipeline:
   - Heterogeneous soft-voting ensemble  
   Each model script includes hyperparameter tuning (GridSearchCV) and evaluation tools.
 
-##  Feature Engineering
-
-The feature engineering pipeline is designed to capture the full dynamics of a competitive Pokémon battle.  
-Here are the most relevant feature families:
-
-###  Key Features
-
-- **Average Final HP**  
-  Mean remaining HP percentage of all team Pokémon at the last observed state.
-
-- **Voluntary Swap Count**  
-  Number of voluntary switches (a switch performed while the Pokémon still has HP > 0).  
-  This acts as a proxy for player style and strategic pressure.
-
-- **Pokémon Encoding**  
-  Pokémon identity encoded using one-hot encoding for linear models and label encoding for tree-based models.
-
----
-
-### Feature Variants
-
-- Temporal segmentation into **early / mid / late game**  
-  - Early: turns 0–10  
-  - Mid: turns 10–20  
-  - Late: turns 20–30  
-
-- **Player-to-player feature differences (P1 – P2)**  
-  These reduce dimensionality while preserving strategic comparisons.
-
----
-
-###  Feature Selection & Decorrelation
-
-- **PCA** (Principal Component Analysis) for Logistic Regression.  
-- **Regularization or feature importance** (Random Forest / XGBoost) for tree-based models to handle redundancy.
-
-##  Models Used
-
-All models were optimized using **GridSearchCV** with 10-fold cross-validation.
-
-| Model                                 | Accuracy (CV)        |
-|---------------------------------------|-----------------------|
-| Logistic Regression (L2)              | 0.8504 ± 0.0065       |
-| Logistic Regression (PCA + L2)        | 0.8516 ± 0.0094       |
-| Logistic Regression (Polynomial)      | 0.805  ± 0.0097       |
-| Random Forest                         | 0.8376 ± 0.0118       |
-| **XGBoost**                           | **0.8532 ± 0.0134**   |
-| Soft Voting (XGB + RF + LR-PCA)       | 0.8517 ± 0.011        |
-
-Models selected for the private leaderboard are highlighted in the final report.
-
-
-
-
-
-##  Results
-
-The best-performing model is **XGBoost**, achieving an accuracy of approximately **85%**.  
-The most influential features include:
-
-- move effectiveness  
-- final HP metrics  
-- faint counts  
-- voluntary switches  
-- damage difference features  
-
----
-
-##  Report
-
-The extended report (methodology, visualizations, and detailed analysis) is available here:  
-**FDS_Challenge_Report.pdf**
-
----
-
 ## Notebook Description
 
 The `Notebook.ipynb` integrates all modules into a complete workflow.  
@@ -158,7 +83,12 @@ Inside the notebook you will find:
 This notebook acts as the main interactive environment to understand,
 run, and evaluate the entire project pipeline.
 
----
+
+##  Report
+
+The extended report (methodology, visualizations, and detailed analysis) is available here:  
+**FDS_Challenge_Report.pdf**
+
 
 ##  Authors
 

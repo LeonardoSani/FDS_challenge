@@ -2056,12 +2056,12 @@ def final_type_advantage(data: list[dict], difference: bool = True, test: bool =
          # compute power of P2 against P1
         power_p2 = 0
         for pok2 in survived_p2:
-            # <--- FIX 1: Corrected 'pok1' to 'pok2'
+            
             for tp2 in survived_p2.get(pok2)[1]:
                 if tp2 != 'notype':
                     for pok1 in survived_p1:
                         tps1 = survived_p1.get(pok1)[1]
-                        # <--- FIX 2: Corrected 'power_p1' to 'power_p2'
+                        
                         power_p2 += effectiveness(tp2, tps1)
 
 

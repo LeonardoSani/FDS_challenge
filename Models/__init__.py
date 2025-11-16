@@ -18,7 +18,8 @@ from .utils import (
 
 from .Rf_and_xgb import (
     create_model_pipeline_rf,
-    create_model_pipeline_xgb
+    create_model_pipeline_xgb,
+    get_feature_importance
 )
 
 from .Heterogeneus_ensembles import (
@@ -32,11 +33,11 @@ __all__ = [
     'create_model_pipeline_PCA',
     'create_model_pipeline_poly',
 
-    # random_forest
+    # random_forest and xgboost
     'create_model_pipeline_rf',
     'create_model_pipeline_xgb',
+    'get_feature_importance',
     
-    #XGBoost
 
     # heterogeneus_ensembles
     'CustomVoter',

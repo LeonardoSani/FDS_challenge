@@ -41,6 +41,28 @@ The goal is to determine which player (P1 or P2) will win a Pokémon battle with
 ├── .gitignore
 └── README.md
 ```
+##  Project Modules Overview
+
+The repository is organized into modular Python components that separate
+feature extraction, aggregation, modeling, and utilities.  
+Each module plays a specific role in the full pipeline:
+
+- **extractors.py** – Functions to parse the raw battle data and compute
+  first-level features (HP, effectiveness, switches, states per turn, etc.).
+
+- **Aggregator.py** – Combines and activates feature groups, producing
+  tailored feature sets for different model families (linear, tree-based, ensembles).
+
+- **utils.py** – Core helper functions and domain logic  
+  (type charts, base stats, dictionaries, damage utility helpers, validations).
+
+- **Models folder** – Contains implementations for:
+  - Logistic Regression (standard, PCA, polynomial)
+  - Random Forest
+  - XGBoost
+  - Heterogeneous soft-voting ensemble  
+  Each model script includes hyperparameter tuning (GridSearchCV) and evaluation tools.
+
 ##  Feature Engineering
 
 The feature engineering pipeline is designed to capture the full dynamics of a competitive Pokémon battle.  
@@ -113,30 +135,6 @@ The most influential features include:
 
 The extended report (methodology, visualizations, and detailed analysis) is available here:  
 **FDS_Challenge_Report.pdf**
-
----
-
-##  Project Modules Overview
-
-The repository is organized into modular Python components that separate
-feature extraction, aggregation, modeling, and utilities.  
-Each module plays a specific role in the full pipeline:
-
-- **extractors.py** – Functions to parse the raw battle data and compute
-  first-level features (HP, effectiveness, switches, states per turn, etc.).
-
-- **Aggregator.py** – Combines and activates feature groups, producing
-  tailored feature sets for different model families (linear, tree-based, ensembles).
-
-- **utils.py** – Core helper functions and domain logic  
-  (type charts, base stats, dictionaries, damage utility helpers, validations).
-
-- **Models folder** – Contains implementations for:
-  - Logistic Regression (standard, PCA, polynomial)
-  - Random Forest
-  - XGBoost
-  - Heterogeneous soft-voting ensemble  
-  Each model script includes hyperparameter tuning (GridSearchCV) and evaluation tools.
 
 ---
 
